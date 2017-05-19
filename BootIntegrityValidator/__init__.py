@@ -213,10 +213,7 @@ class BootIntegrityValidator(object):
         B1D5EA8BC99C5C7F7F19E0A10B60D7BEC904A66BCFD495A4BC45FF55F137F35F644F730120F74F17FAC88555304A28686699259A7AE772331917A51D66FFBF1122F6D757C7EE430D33F0B79507696570E19C92EEC6033F2CCB5E24EA9BC7CAF0274D1BF3EE3419A3B3C55AB62B95B2FE6D4FAFFEF2D62ADB8A782E14EB3C92DB2E72DB3D3FC1D2CF91DBFBBDE82A4A03BD505FE1AB109976C20AC58D651EF30D80D757832D12AAAD49DC6FF7DCAD4E28D9E22875FC3D157A4FF185313DF05831706505FE7CAF2BEFD5579EA182D1A9C70AE1788D3C539DE7ACC1E3FDDD800E08DB88C29C7B010E6A053622079B4DF476DE5D07AE6AAF2BEC4DCE63F2AA1C1DD2
         jyoungta-isr4321#
 
-        :return: bool (validate or not),
-                 OpenSSL.crypto.x509 cisco_ca,
-                 OpenSSL.crypto.x509 cisco_sudi_ca,
-                 OpenSSL.crypto.x509 device_sudi,
+        :return:
         """
 
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
@@ -257,3 +254,75 @@ class BootIntegrityValidator(object):
             a = 100
         else:
             b = 200
+
+    @staticmethod
+    def validate_show_platform_sudi_output(cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object):
+        """
+        Validates the signature of the output from show platform sudi sign nonce xxx output
+        Must contain the command actually being executed in text if nonce is included
+
+        :param cmd_output: str
+
+        example input
+        isr4321#show platform sudi certificate sign nonce 1
+        -----BEGIN CERTIFICATE-----
+        MIIDQzCCAiugAwIBAgIQX/h7KCtU3I1CoxW1aMmt/zANBgkqhkiG9w0BAQUFADA1
+        ...output omitted..
+        kxpUnwVwwEpxYB5DC2Ae/qPOgRnhCzU=
+        -----END CERTIFICATE-----
+        -----BEGIN CERTIFICATE-----
+        MIIEPDCCAySgAwIBAgIKYQlufQAAAAAADDANBgkqhkiG9w0BAQUFADA1MRYwFAYD
+        ...output omitted...
+        0IFJZBGrooCRBjOSwFv8cpWCbmWdPaCQT2nwIjTfY8c=
+        -----END CERTIFICATE-----
+        -----BEGIN CERTIFICATE-----
+        MIIDejCCAmKgAwIBAgIDMEqgMA0GCSqGSIb3DQEBCwUAMCcxDjAMBgNVBAoTBUNp
+        ...output omitted...
+        IAFBbdvdOwLEVVBc76g74H7zJDkv9VtVtOZk0Ft5
+        -----END CERTIFICATE-----
+        Signature version: 1
+        Signature:
+        B1D5EA8BC99C5C7F7F19E0A10B60D7BEC904A66BCFD495A4BC45FF55F137F35F644F730120F74F17FAC88555304A28686699259A7AE772331917A51D66FFBF1122F6D757C7EE430D33F0B79507696570E19C92EEC6033F2CCB5E24EA9BC7CAF0274D1BF3EE3419A3B3C55AB62B95B2FE6D4FAFFEF2D62ADB8A782E14EB3C92DB2E72DB3D3FC1D2CF91DBFBBDE82A4A03BD505FE1AB109976C20AC58D651EF30D80D757832D12AAAD49DC6FF7DCAD4E28D9E22875FC3D157A4FF185313DF05831706505FE7CAF2BEFD5579EA182D1A9C70AE1788D3C539DE7ACC1E3FDDD800E08DB88C29C7B010E6A053622079B4DF476DE5D07AE6AAF2BEC4DCE63F2AA1C1DD2
+        isr4321#
+
+        :param ca: Openssl.crypto.x509
+        :param sub: openssl.crypto.x509
+        :param device: Openssl.crypto.x509
+        :return: bool - validated or not
+        """
+
+        assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
+        assert isinstance(ca_cert_object, OpenSSL.crypto.X509), "ca_cert_object is not an OpenSSL.crypto.X509type: %r" % type(ca_cert_object)
+        assert isinstance(sub_ca_cert_object, OpenSSL.crypto.X509), "sub_ca_cert_object is not an OpenSSL.crypto.X509type: %r" % type(sub_ca_cert_object)
+        assert isinstance(device_cert_object, OpenSSL.crypto.X509), "device_cert_object is not an OpenSSL.crypto.X509type: %r" % type(device_cert_object)
+
+        sigs = re.search(r"Signature\s+version:\s(\d+).+Signature:.+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
+        sig_version = sigs.group(1)
+        sig_signature = sigs.group(2)
+
+        nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
+        nonce = None
+        if nonce_re:
+            nonce = int(nonce_re.group(1))
+
+        # Convert the signature from output in hex to bytes
+        sig_signature_bytes = base64.b16decode(s=sig_signature)
+
+        # data to be hashed
+        header = struct.pack('>QI', int(nonce), int(sig_version)) if nonce else struct.pack('>LI', int(sig_version))
+        ca_cert_der = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=ca_cert_object)
+        cisco_sudi_der = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=sub_ca_cert_object)
+        device_sudi_der = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=device_cert_object)
+        data_to_be_hashed = header + ca_cert_der + cisco_sudi_der + device_sudi_der
+        calculated_hash = SHA256.new(data_to_be_hashed)
+
+        # validate calculated hash
+        device_pkey_bin = OpenSSL.crypto.dump_publickey(type=OpenSSL.crypto.FILETYPE_ASN1,
+                                                        pkey=device_cert_object.get_pubkey())
+
+        device_rsa_key = RSA.importKey(device_pkey_bin)
+        verifier = PKCS1_v1_5.new(device_rsa_key)
+        if verifier.verify(calculated_hash, sig_signature_bytes):
+            return True
+        else:
+            return False

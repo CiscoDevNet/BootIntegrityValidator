@@ -1,0 +1,9 @@
+3800Switch#show platform integrity sign
+Platform: WS-C3850-24XU
+Boot Loader Version: CAT3K_CAA Boot Loader (CAT3K_CAA-HBOOT-M) Version 3.58, RELEASE SOFTWARE (P)
+Boot Loader Hash:
+Boot 0 Version: F01031R12.18e8d1c732014-06-16
+Boot 0 Hash:
+OS Version: 16.03.03
+OS Hash:
+% Error retrieving integrity data
