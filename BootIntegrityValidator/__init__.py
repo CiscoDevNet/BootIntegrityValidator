@@ -161,7 +161,7 @@ class BootIntegrityValidator(object):
         with open(filename, "rb") as f:
             return OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=f.read())
 
-    def validate(self, show_platform_integrity_cmd_output, show_platform_sudi_certificate_cmd_output):
+    def validate(self, show_platform_integrity_cmd_output, show_platform_sudi_certificate_cmd_output=None):
         """
         Takes the CLI output from 'show platform integrity' and validates the output against the KGV
         If show_platform_sudi_certificate_cmd_output is provided validate the signature on the command itself
@@ -176,11 +176,19 @@ class BootIntegrityValidator(object):
         :raises: ProductNotFound - Hardware platform not found in KGV
         :raises: VersionNotFound - Software version not found in KGV
         """
-        a = 100
 
+        assert isinstance(show_platform_integrity_cmd_output, six.string_types), "show_platform_integrity_cmd_output should be a string type"
+        assert show_platform_sudi_certificate_cmd_output is None or \
+               isinstance(show_platform_sudi_certificate_cmd_output, six.string_types), "show_platform_sudi_certificate_cmd_output should be a string type"
+
+        if show_platform_sudi_certificate_cmd_output:
+            # Validate the device certificate and signature on cli output if present
+            self._validate_device_cert(cmd_output=show_platform_sudi_certificate_cmd_output)
 
     def _validate_device_cert(self, cmd_output):
         """
+        Validate the device certificate against the Cisco CA and the signature if present
+
         :param cmd_output: This is the command output
 
         example input
@@ -213,91 +221,39 @@ class BootIntegrityValidator(object):
 
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
 
-        known_good_cisco_ca = ("-----BEGIN CERTIFICATE-----\n"
-                               "MIIDQzCCAiugAwIBAgIQX/h7KCtU3I1CoxW1aMmt/zANBgkqhkiG9w0BAQUFADA1\n"
-                               "MRYwFAYDVQQKEw1DaXNjbyBTeXN0ZW1zMRswGQYDVQQDExJDaXNjbyBSb290IENB\n"
-                               "IDIwNDgwHhcNMDQwNTE0MjAxNzEyWhcNMjkwNTE0MjAyNTQyWjA1MRYwFAYDVQQK\n"
-                               "Ew1DaXNjbyBTeXN0ZW1zMRswGQYDVQQDExJDaXNjbyBSb290IENBIDIwNDgwggEg\n"
-                               "MA0GCSqGSIb3DQEBAQUAA4IBDQAwggEIAoIBAQCwmrmrp68Kd6ficba0ZmKUeIhH\n"
-                               "xmJVhEAyv8CrLqUccda8bnuoqrpu0hWISEWdovyD0My5jOAmaHBKeN8hF570YQXJ\n"
-                               "FcjPFto1YYmUQ6iEqDGYeJu5Tm8sUxJszR2tKyS7McQr/4NEb7Y9JHcJ6r8qqB9q\n"
-                               "VvYgDxFUl4F1pyXOWWqCZe+36ufijXWLbvLdT6ZeYpzPEApk0E5tzivMW/VgpSdH\n"
-                               "jWn0f84bcN5wGyDWbs2mAag8EtKpP6BrXruOIIt6keO1aO6g58QBdKhTCytKmg9l\n"
-                               "Eg6CTY5j/e/rmxrbU6YTYK/CfdfHbBcl1HP7R2RQgYCUTOG/rksc35LtLgXfAgED\n"
-                               "o1EwTzALBgNVHQ8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUJ/PI\n"
-                               "FR5umgIJFq0roIlgX9p7L6owEAYJKwYBBAGCNxUBBAMCAQAwDQYJKoZIhvcNAQEF\n"
-                               "BQADggEBAJ2dhISjQal8dwy3U8pORFBi71R803UXHOjgxkhLtv5MOhmBVrBW7hmW\n"
-                               "Yqpao2TB9k5UM8Z3/sUcuuVdJcr18JOagxEu5sv4dEX+5wW4q+ffy0vhN4TauYuX\n"
-                               "cB7w4ovXsNgOnbFp1iqRe6lJT37mjpXYgyc81WhJDtSd9i7rp77rMKSsH0T8lasz\n"
-                               "Bvt9YAretIpjsJyp8qS5UwGH0GikJ3+r/+n6yUA4iGe0OcaEb1fJU9u6ju7AQ7L4\n"
-                               "CYNu/2bPPu8Xs1gYJQk0XuPL1hS27PKSb3TkL4Eq1ZKR4OCXPDJoBYVL0fdX4lId\n"
-                               "kxpUnwVwwEpxYB5DC2Ae/qPOgRnhCzU=\n"
-                               "-----END CERTIFICATE-----").strip()
-
-        known_good_cisco_sudi_ca = ("-----BEGIN CERTIFICATE-----\n"
-                                    "MIIEPDCCAySgAwIBAgIKYQlufQAAAAAADDANBgkqhkiG9w0BAQUFADA1MRYwFAYD\n"
-                                    "VQQKEw1DaXNjbyBTeXN0ZW1zMRswGQYDVQQDExJDaXNjbyBSb290IENBIDIwNDgw\n"
-                                    "HhcNMTEwNjMwMTc1NjU3WhcNMjkwNTE0MjAyNTQyWjAnMQ4wDAYDVQQKEwVDaXNj\n"
-                                    "bzEVMBMGA1UEAxMMQUNUMiBTVURJIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A\n"
-                                    "MIIBCgKCAQEA0m5l3THIxA9tN/hS5qR/6UZRpdd+9aE2JbFkNjht6gfHKd477AkS\n"
-                                    "5XAtUs5oxDYVt/zEbslZq3+LR6qrqKKQVu6JYvH05UYLBqCj38s76NLk53905Wzp\n"
-                                    "9pRcmRCPuX+a6tHF/qRuOiJ44mdeDYZo3qPCpxzprWJDPclM4iYKHumMQMqmgmg+\n"
-                                    "xghHIooWS80BOcdiynEbeP5rZ7qRuewKMpl1TiI3WdBNjZjnpfjg66F+P4SaDkGb\n"
-                                    "BXdGj13oVeF+EyFWLrFjj97fL2+8oauV43Qrvnf3d/GfqXj7ew+z/sXlXtEOjSXJ\n"
-                                    "URsyMEj53Rdd9tJwHky8neapszS+r+kdVQIDAQABo4IBWjCCAVYwCwYDVR0PBAQD\n"
-                                    "AgHGMB0GA1UdDgQWBBRI2PHxwnDVW7t8cwmTr7i4MAP4fzAfBgNVHSMEGDAWgBQn\n"
-                                    "88gVHm6aAgkWrSugiWBf2nsvqjBDBgNVHR8EPDA6MDigNqA0hjJodHRwOi8vd3d3\n"
-                                    "LmNpc2NvLmNvbS9zZWN1cml0eS9wa2kvY3JsL2NyY2EyMDQ4LmNybDBQBggrBgEF\n"
-                                    "BQcBAQREMEIwQAYIKwYBBQUHMAKGNGh0dHA6Ly93d3cuY2lzY28uY29tL3NlY3Vy\n"
-                                    "aXR5L3BraS9jZXJ0cy9jcmNhMjA0OC5jZXIwXAYDVR0gBFUwUzBRBgorBgEEAQkV\n"
-                                    "AQwAMEMwQQYIKwYBBQUHAgEWNWh0dHA6Ly93d3cuY2lzY28uY29tL3NlY3VyaXR5\n"
-                                    "L3BraS9wb2xpY2llcy9pbmRleC5odG1sMBIGA1UdEwEB/wQIMAYBAf8CAQAwDQYJ\n"
-                                    "KoZIhvcNAQEFBQADggEBAGh1qclr9tx4hzWgDERm371yeuEmqcIfi9b9+GbMSJbi\n"
-                                    "ZHc/CcCl0lJu0a9zTXA9w47H9/t6leduGxb4WeLxcwCiUgvFtCa51Iklt8nNbcKY\n"
-                                    "/4dw1ex+7amATUQO4QggIE67wVIPu6bgAE3Ja/nRS3xKYSnj8H5TehimBSv6TECi\n"
-                                    "i5jUhOWryAK4dVo8hCjkjEkzu3ufBTJapnv89g9OE+H3VKM4L+/KdkUO+52djFKn\n"
-                                    "hyl47d7cZR4DY4LIuFM2P1As8YyjzoNpK/urSRI14WdIlplR1nH7KNDl5618yfVP\n"
-                                    "0IFJZBGrooCRBjOSwFv8cpWCbmWdPaCQT2nwIjTfY8c=\n"
-                                    "-----END CERTIFICATE-----").strip()
+        known_good_cisco_ca = self._cert_obj['crca2048']
+        known_good_cisco_sudi_ca = self._cert_obj['ACT2SUDICA']
 
         # Extract certs from output
         certs = re.findall(r"((?:-{5}BEGIN\s+CERTIFICATE-{5}).+?(?:-{5}END\s+CERTIFICATE-{5}))", cmd_output, flags=re.DOTALL)
 
         # Compare CA against known good CA
         ca_cert_text = certs[0]
-        if not ca_cert_text == known_good_cisco_ca:
-            raise Exception("Root Cert mismatch")
         ca_cert_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=ca_cert_text.encode())
+        if OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=known_good_cisco_ca) !=\
+                OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=ca_cert_obj):
+            raise BootIntegrityValidator.ValidationException("Cisco Root CA in cmd_output doesn't match known good Cisco Root CA")
 
         # Compare Sub-CA against known good sub-CA
         cisco_sudi_ca_text = certs[1]
-        if not cisco_sudi_ca_text == known_good_cisco_sudi_ca:
-            raise Exception("Sub-Ca Cert mismatch")
         cisco_sudi_ca_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=cisco_sudi_ca_text.encode())
+        if OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=known_good_cisco_sudi_ca) !=\
+                OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=cisco_sudi_ca_obj):
+            raise BootIntegrityValidator.ValidationException("Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA")
 
         # Device sudi cert
         device_sudi_text = certs[2]
         device_sudi_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=device_sudi_text.encode())
 
-        store = OpenSSL.crypto.X509Store()
-        store.add_cert(cert=ca_cert_obj)
-
-        # validate Sub-CA against Root
-        store_ctx = OpenSSL.crypto.X509StoreContext(store=store, certificate=cisco_sudi_ca_obj)
-        try:
-            store_ctx.verify_certificate()
-        except OpenSSL.crypto.X509StoreContextError as e:
-            raise ValueError("sub-ca failed to validate against root")
-
-        # Since Sub-CA is validated add it to the store
-        store.add_cert(cert=cisco_sudi_ca_obj)
-        store_ctx = OpenSSL.crypto.X509StoreContext(store=store, certificate=device_sudi_obj)
-
         # validate Device ID Certificate
         try:
+            store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=device_sudi_obj)
             store_ctx.verify_certificate()
-            validated = True
         except OpenSSL.crypto.X509StoreContextError as e:
-            validated = False
+            raise BootIntegrityValidator.ValidationException("Device ID Certificate failed validation against Cisco CA Roots")
 
-        return validated, ca_cert_obj, cisco_sudi_ca_obj, device_sudi_obj
+        # Validate signature if present
+        if "Signature" in cmd_output:
+            a = 100
+        else:
+            b = 200
