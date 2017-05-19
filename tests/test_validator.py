@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
 from BootIntegrityValidator import BootIntegrityValidator
 
+
 class TestBootIntegrityValidator(unittest.TestCase):
 
     def setUp(self):

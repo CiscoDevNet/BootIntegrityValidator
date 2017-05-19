@@ -18,9 +18,15 @@ class BootIntegrityValidator(object):
         """
         Base Exception for all exceptions this class will raise
         """
+
     class ValidationException(BaseException):
         """
         Validation was attempted but failed
+        """
+
+    class InvalidFormat(BaseException):
+        """
+        known_good_values is not structured correctly
         """
 
     def __init__(self, known_good_values, known_good_values_signature=None, custom_signing_cert=None):
@@ -31,6 +37,9 @@ class BootIntegrityValidator(object):
         :param known_good_values_signature: bytes - containing the signature of the file above
         :param signing_cert: file like object containing the signing_cert
         """
+
+        assert isinstance(known_good_values, bytes), "known_good_value should be of type bytes"
+        assert known_good_values_signature is None or isinstance(known_good_values_signature, bytes), "known_good_value_signature should be None or bytes"
 
         # Boot strap Trusted Root and then validate Sub-CAs
 
@@ -50,6 +59,11 @@ class BootIntegrityValidator(object):
             except OpenSSL.crypto.Error as e:
                 raise BootIntegrityValidator.ValidationException("The known_good_values failed signature failed signature validation")
 
+        # Now the known_good_values is validated try to load the json. If successful we are ready
+        try:
+            self._kgv = json.loads(known_good_values.decode())
+        except ValueError as e:
+            raise BootIntegrityValidator.InvalidFormat("The known_good_values appears to be invalid JSON")
 
 
     def _bootstrap_trusted_cas(self):
