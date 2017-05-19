@@ -1,0 +1,15 @@
+
+python_2_test:
+  script:
+    - python2 tests/test_api.py
+
+python_2_install:
+  script: python2 setup.py install
+
+python_3_test:
+  script:
+    - python3 tests/test_api.py
+
+
+python_3_install:
+  script: python3 setup.py install

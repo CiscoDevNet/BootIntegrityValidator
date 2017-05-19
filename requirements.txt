@@ -1,0 +1,5 @@
+###### Requirements without Version Specifiers ######
+OpenSSL
+base64
+six
+Crypto
