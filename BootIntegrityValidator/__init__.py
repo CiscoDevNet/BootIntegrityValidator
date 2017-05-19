@@ -14,6 +14,15 @@ class BootIntegrityValidator(object):
     """
     Validates
     """
+    class BaseException(Exception):
+        """
+        Base Exception for all exceptions this class will raise
+        """
+    class ValidationException(BaseException):
+        """
+        Validation was attempted but failed
+        """
+
 
     def __init__(self, known_good_values, known_good_values_signature=None, signing_cert=None):
         """
@@ -39,7 +48,12 @@ class BootIntegrityValidator(object):
 
         # Validate the known_good_valuescrca2048_obj object if known_good_values_signature provided
         if known_good_values_signature:
-            self._validate_kgv_input_signature(kgv=known_good_values, kgv_signature=known_good_values_signature, custom_signing_cert=True if signing_cert else False)
+            try:
+                self._validate_kgv_input_signature(kgv=known_good_values,
+                                                   kgv_signature=known_good_values_signature,
+                                                   custom_signing_cert=True if signing_cert else False)
+            except OpenSSL.crypto.Error as e:
+                raise BootIntegrityValidator.ValidationException("The known_good_values failed signature failed signature validation")
 
     def _bootstrap_trusted_cas(self):
         """
@@ -96,6 +110,8 @@ class BootIntegrityValidator(object):
         :param kgv_signature:
         :return:
         """
+        signing_cert = self._cert_obj['custom'] if custom_signing_cert else self._cert_obj['Known_Good_Values_PROD']
+        OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha512")
 
     @staticmethod
     def _load_cert_from_stream(f):

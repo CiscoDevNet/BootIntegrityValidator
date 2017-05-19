@@ -9,11 +9,19 @@ from BootIntegrityValidator import BootIntegrityValidator
 class TestBootIntegrityValidator(unittest.TestCase):
 
     def setUp(self):
-
         path = os.path.abspath(".")
-        self.bi = BootIntegrityValidator(known_good_values=path + "/old_kgv_signed.json",
-                                         known_good_values_signature=path + "old_kgv_signed.json.signature")
+        kgv = open(path + "/old_kgv_signed.json", "rb")
+        kgv_sig = open( path + "/old_kgv_signed.json.signature", "rb")
+        self.bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
 
+    def test_kgv_invalid_signature(self):
+        path = os.path.abspath(".")
+        kgv = open(path + "/old_kgv_signed.json", "rb")
+        kgv_sig = open(path + "/old_kgv_signed.json.signature.bad", "rb")
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          BootIntegrityValidator,
+                          known_good_values=kgv.read(),
+                          known_good_values_signature=kgv_sig.read())
 
     def test_boot_0_valid(self):
         a = 100 / 0
@@ -42,7 +50,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
     def test_os_invalid(self):
         a = 100 / 0
 
-    def test_kgv_invalid(self):
+    def test_kgv_invalid_format(self):
         a = 100 / 0
 
     def test_no_product_found(self):
