@@ -2,3 +2,4 @@
 PyOpenSSL
 six
 Pycrypto
+setuptools
