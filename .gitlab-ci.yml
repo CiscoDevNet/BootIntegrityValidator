@@ -1,14 +1,16 @@
 
 python_2_test:
   script:
-    - python2 tests/test_validator.py
+    - cd tests
+    - python2 test_validator.py
 
 python_2_install:
   script: python2 setup.py install
 
 python_3_test:
   script:
-    - python3 tests/test_validator.py
+    - cd tests
+    - python3 test_validator.py
 
 
 python_3_install:
