@@ -23,37 +23,34 @@ class BootIntegrityValidator(object):
         Validation was attempted but failed
         """
 
-
-    def __init__(self, known_good_values, known_good_values_signature=None, signing_cert=None):
+    def __init__(self, known_good_values, known_good_values_signature=None, custom_signing_cert=None):
         """
         Accepts the known_good_values dictionary and then validates the signature if given
 
-        :param known_good_values: file like object containing JSON that is the KGV
-        :param known_good_values_signature: file like object containing the signature of the file above
-        :param signing_cert_filename: file like object containing the signing_cert
+        :param known_good_values: bytes - containing JSON that is the KGV
+        :param known_good_values_signature: bytes - containing the signature of the file above
+        :param signing_cert: file like object containing the signing_cert
         """
 
         # Boot strap Trusted Root and then validate Sub-CAs
 
         self._trusted_store = None
         self._cert_obj = {}
-        try:
-            self._bootstrap_trusted_cas()
-        except OpenSSL.crypto.X509StoreContextError as e:
-            # oops!
-            raise
+        self._bootstrap_trusted_cas()
 
-        if signing_cert:
-            self._validate_custom_cert(custom_cert=signing_cert)
+        if custom_signing_cert:
+            self._validate_custom_cert(custom_cert=custom_signing_cert)
 
         # Validate the known_good_valuescrca2048_obj object if known_good_values_signature provided
         if known_good_values_signature:
             try:
                 self._validate_kgv_input_signature(kgv=known_good_values,
                                                    kgv_signature=known_good_values_signature,
-                                                   custom_signing_cert=True if signing_cert else False)
+                                                   custom_signing_cert=True if custom_signing_cert else False)
             except OpenSSL.crypto.Error as e:
                 raise BootIntegrityValidator.ValidationException("The known_good_values failed signature failed signature validation")
+
+
 
     def _bootstrap_trusted_cas(self):
         """
@@ -63,33 +60,37 @@ class BootIntegrityValidator(object):
         package_name = __name__
         package_cert_path = '/certs'
 
-        # Load the O=Cisco Systems, CN=Cisco Root CA 2048 tree first
-        crca2048_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crca2048.pem"))
-        act2sudica_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/ACT2SUDICA.pem"))
+        try:
+            # Load the O=Cisco Systems, CN=Cisco Root CA 2048 tree first
+            crca2048_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crca2048.pem"))
+            act2sudica_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/ACT2SUDICA.pem"))
 
-        # Validate the act2sudica against the root and add both to store if passed validation
-        self._trusted_store = OpenSSL.crypto.X509Store()
-        self._trusted_store.add_cert(cert=crca2048_obj)
-        self._cert_obj['crca2048'] = crca2048_obj
-        store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=act2sudica_obj)
-        store_ctx.verify_certificate()
-        self._trusted_store.add_cert(cert=act2sudica_obj)
-        self._cert_obj['ACT2SUDICA'] = act2sudica_obj
+            # Validate the act2sudica against the root and add both to store if passed validation
+            self._trusted_store = OpenSSL.crypto.X509Store()
+            self._trusted_store.add_cert(cert=crca2048_obj)
+            self._cert_obj['crca2048'] = crca2048_obj
+            store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=act2sudica_obj)
+            store_ctx.verify_certificate()
+            self._trusted_store.add_cert(cert=act2sudica_obj)
+            self._cert_obj['ACT2SUDICA'] = act2sudica_obj
 
-        # Load the O=Cisco, CN=Cisco Root CA M2 tree
-        crcam2_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crcam2.pem"))
-        innerspace_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/innerspace.cer"))
-        kgv_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/Known_Good_Values_PROD.pem"))
-        self._trusted_store.add_cert(cert=crcam2_obj)
-        self._cert_obj['crcam2']  = crcam2_obj
-        store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=innerspace_obj)
-        store_ctx.verify_certificate()
-        self._trusted_store.add_cert(cert=innerspace_obj)
-        self._cert_obj['innerspace'] = innerspace_obj
-        store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=kgv_obj)
-        store_ctx.verify_certificate()
-        self._trusted_store.add_cert(cert=kgv_obj)
-        self._cert_obj['Known_Good_Values_PROD'] = kgv_obj
+            # Load the O=Cisco, CN=Cisco Root CA M2 tree
+            crcam2_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crcam2.pem"))
+            innerspace_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/innerspace.cer"))
+            kgv_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/Known_Good_Values_PROD.pem"))
+            self._trusted_store.add_cert(cert=crcam2_obj)
+            self._cert_obj['crcam2']  = crcam2_obj
+            store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=innerspace_obj)
+            store_ctx.verify_certificate()
+            self._trusted_store.add_cert(cert=innerspace_obj)
+            self._cert_obj['innerspace'] = innerspace_obj
+            store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=kgv_obj)
+            store_ctx.verify_certificate()
+            self._trusted_store.add_cert(cert=kgv_obj)
+            self._cert_obj['Known_Good_Values_PROD'] = kgv_obj
+        except Exception as e:
+            raise BootIntegrityValidator.ValidationException("Validation of Cisco CA certs failed")
+
 
     def _validate_custom_cert(self, custom_cert):
         """
@@ -99,7 +100,10 @@ class BootIntegrityValidator(object):
         """
         custom_cert_obj = self._load_cert_from_stream(custom_cert)
         store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=custom_cert_obj)
-        store_ctx.verify_certificate()
+        try:
+            store_ctx.verify_certificate()
+        except OpenSSL.crypto.X509StoreContextError as e:
+            raise BootIntegrityValidator.ValidationException("Custom signing cert failed to validate against the Cisco CAs")
         self._trusted_store.add_cert(cert=custom_cert_obj)
         self._cert_obj['custom'] = custom_cert_obj
 

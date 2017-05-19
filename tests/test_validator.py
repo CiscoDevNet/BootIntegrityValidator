@@ -14,6 +14,17 @@ class TestBootIntegrityValidator(unittest.TestCase):
         kgv_sig = open( path + "/old_kgv_signed.json.signature", "rb")
         self.bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
 
+    def test_invalid_custom_cert(self):
+        path = os.path.abspath(".")
+        kgv = open(path + "/old_kgv_signed.json", "rb")
+        kgv_sig = open(path + "/old_kgv_signed.json.signature.bad", "rb")
+        custom_cert = open(path + "/bad_custom_cert.pem", "rb")
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          BootIntegrityValidator,
+                          known_good_values=kgv.read(),
+                          known_good_values_signature=kgv_sig.read(),
+                          custom_signing_cert=custom_cert)
+
     def test_kgv_invalid_signature(self):
         path = os.path.abspath(".")
         kgv = open(path + "/old_kgv_signed.json", "rb")
