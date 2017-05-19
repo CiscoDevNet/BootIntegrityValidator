@@ -12,7 +12,7 @@ from Crypto.Hash import SHA256
 
 class BootIntegrityValidator(object):
     """
-    Validates
+    Validates the boot integrity visibility data for Cisco Products
     """
     class BaseException(Exception):
         """
@@ -29,10 +29,18 @@ class BootIntegrityValidator(object):
         known_good_values is not structured correctly
         """
 
+    class ProductNotFound(BaseException):
+        """
+        Product Not Found
+        """
+
+    class VersionNotFound(BaseException):
+        """
+        Software Version Not Found
+        """
+
     def __init__(self, known_good_values, known_good_values_signature=None, custom_signing_cert=None):
         """
-        Accepts the known_good_values dictionary and then validates the signature if given
-
         :param known_good_values: bytes - containing JSON that is the KGV
         :param known_good_values_signature: bytes - containing the signature of the file above
         :param signing_cert: file like object containing the signing_cert
@@ -52,12 +60,9 @@ class BootIntegrityValidator(object):
 
         # Validate the known_good_valuescrca2048_obj object if known_good_values_signature provided
         if known_good_values_signature:
-            try:
-                self._validate_kgv_input_signature(kgv=known_good_values,
+            self._validate_kgv_input_signature(kgv=known_good_values,
                                                    kgv_signature=known_good_values_signature,
                                                    custom_signing_cert=True if custom_signing_cert else False)
-            except OpenSSL.crypto.Error as e:
-                raise BootIntegrityValidator.ValidationException("The known_good_values failed signature failed signature validation")
 
         # Now the known_good_values is validated try to load the json. If successful we are ready
         try:
@@ -65,11 +70,11 @@ class BootIntegrityValidator(object):
         except ValueError as e:
             raise BootIntegrityValidator.InvalidFormat("The known_good_values appears to be invalid JSON")
 
-
     def _bootstrap_trusted_cas(self):
         """
-
-        :return:
+        Reads in the Root Cisco CA Certs from within the package
+        :return: None
+        :raises: ValidationException if the Root or Sub-CA certs fail to validate
         """
         package_name = __name__
         package_cert_path = '/certs'
@@ -105,12 +110,12 @@ class BootIntegrityValidator(object):
         except Exception as e:
             raise BootIntegrityValidator.ValidationException("Validation of Cisco CA certs failed")
 
-
     def _validate_custom_cert(self, custom_cert):
         """
-
+        Validates the custom_cert against the Cisco CA Roots
         :param custom_cert_filename: file-like obj containing custom signing cert
-        :return:
+        :return: None
+        :raises: ValidationException if the custom_cert isn't signed by Cisco CAs
         """
         custom_cert_obj = self._load_cert_from_stream(custom_cert)
         store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=custom_cert_obj)
@@ -123,20 +128,25 @@ class BootIntegrityValidator(object):
 
     def _validate_kgv_input_signature(self, kgv, kgv_signature, custom_signing_cert):
         """
-        Validates the KGV input file against the signature using Known_Good_Values_PROD.cer if no other provided
-        :param kgv:
-        :param kgv_signature:
-        :return:
+        Validates the KGV input file against the signature using Known_Good_Values_PROD.cer if custom_signing_cert is False
+        :param kgv: bytes of the kgv
+        :param kgv_signature: bytes of the signature
+        :return: None
+        :raises:
         """
         signing_cert = self._cert_obj['custom'] if custom_signing_cert else self._cert_obj['Known_Good_Values_PROD']
-        OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha512")
+        try:
+            OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha512")
+        except OpenSSL.crypto.Error as e:
+            raise BootIntegrityValidator.ValidationException(
+                "The known_good_values failed signature failed signature validation")
 
     @staticmethod
     def _load_cert_from_stream(f):
         """
-        Returns OpenSSL.x509 Ojbect read from a file-like
-        :param f:
-        :return:
+        Returns OpenSSL.x509 Ojbect read from a file-like object
+        :param f: file-like object
+        :return: OpenSSL.x509 Object
         """
         return OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=f.read())
 
@@ -153,11 +163,20 @@ class BootIntegrityValidator(object):
 
     def validate(self, show_platform_integrity_cmd_output, show_platform_sudi_certificate_cmd_output):
         """
+        Takes the CLI output from 'show platform integrity' and validates the output against the KGV
+        If show_platform_sudi_certificate_cmd_output is provided validate the signature on the command itself
 
-        :param show_platform_integrity_cmd_output:
-        :param show_platform_sudi_certificate_cmd_output:
-        :return:
+        :param show_platform_integrity_cmd_output: string of cli output
+        :param show_platform_sudi_certificate_cmd_output: string of cli output
+        :return: None if successfully validated
+        :raises: ValidationError-
+                    - if version is in kgv but hashes don't match
+                    - if signature on cli is bad
+        :raises: InvalidFormat - if the format of the KGV is invalid
+        :raises: ProductNotFound - Hardware platform not found in KGV
+        :raises: VersionNotFound - Software version not found in KGV
         """
+        a = 100
 
 
     def _validate_device_cert(self, cmd_output):

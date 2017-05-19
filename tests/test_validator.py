@@ -11,15 +11,15 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def setUp(self):
         path = os.path.abspath(".")
-        kgv = open(path + "/old_kgv_signed.json", "rb")
-        kgv_sig = open( path + "/old_kgv_signed.json.signature", "rb")
+        kgv = open(path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open( path + "/test_files/old_kgv_signed.json.signature", "rb")
         self.bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
 
     def test_invalid_custom_cert(self):
         path = os.path.abspath(".")
-        kgv = open(path + "/old_kgv_signed.json", "rb")
-        kgv_sig = open(path + "/old_kgv_signed.json.signature.bad", "rb")
-        custom_cert = open(path + "/bad_custom_cert.pem", "rb")
+        kgv = open(path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(path + "/test_files/old_kgv_signed.json.signature.bad", "rb")
+        custom_cert = open(path + "/test_files/bad_custom_cert.pem", "rb")
         self.assertRaises(BootIntegrityValidator.ValidationException,
                           BootIntegrityValidator,
                           known_good_values=kgv.read(),
@@ -28,8 +28,8 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_kgv_invalid_signature(self):
         path = os.path.abspath(".")
-        kgv = open(path + "/old_kgv_signed.json", "rb")
-        kgv_sig = open(path + "/old_kgv_signed.json.signature.bad", "rb")
+        kgv = open(path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(path + "/test_files/old_kgv_signed.json.signature.bad", "rb")
         self.assertRaises(BootIntegrityValidator.ValidationException,
                           BootIntegrityValidator,
                           known_good_values=kgv.read(),
