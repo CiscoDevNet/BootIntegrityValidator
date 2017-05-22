@@ -246,17 +246,21 @@ class BootIntegrityValidator(object):
         try:
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=device_sudi_obj)
             store_ctx.verify_certificate()
+            self._cert_obj['device'] = device_sudi_obj
         except OpenSSL.crypto.X509StoreContextError as e:
             raise BootIntegrityValidator.ValidationException("Device ID Certificate failed validation against Cisco CA Roots")
 
         # Validate signature if present
         if "Signature" in cmd_output:
-            a = 100
+            self._validate_show_platform_sudi_output(cmd_output=cmd_output,
+                                                    ca_cert_object=self._cert_obj['crca2048'],
+                                                    sub_ca_cert_object=self._cert_obj['ACT2SUDICA'],
+                                                    device_cert_object=self._cert_obj['device'])
         else:
             b = 200
 
     @staticmethod
-    def validate_show_platform_sudi_output(cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object):
+    def _validate_show_platform_sudi_output(cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object):
         """
         Validates the signature of the output from show platform sudi sign nonce xxx output
         Must contain the command actually being executed in text if nonce is included
@@ -309,7 +313,7 @@ class BootIntegrityValidator(object):
         sig_signature_bytes = base64.b16decode(s=sig_signature)
 
         # data to be hashed
-        header = struct.pack('>QI', int(nonce), int(sig_version)) if nonce else struct.pack('>LI', int(sig_version))
+        header = struct.pack('>QI', int(nonce), int(sig_version)) if nonce else struct.pack('>I', int(sig_version))
         ca_cert_der = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=ca_cert_object)
         cisco_sudi_der = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=sub_ca_cert_object)
         device_sudi_der = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=device_cert_object)
@@ -323,6 +327,6 @@ class BootIntegrityValidator(object):
         device_rsa_key = RSA.importKey(device_pkey_bin)
         verifier = PKCS1_v1_5.new(device_rsa_key)
         if verifier.verify(calculated_hash, sig_signature_bytes):
-            return True
+            return
         else:
-            return False
+            raise BootIntegrityValidator.ValidationException("Signature on show platform sudi output failed validation")

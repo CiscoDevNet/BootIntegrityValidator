@@ -41,6 +41,19 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           show_platform_integrity_cmd_output=show_plat.read(),
                           show_platform_sudi_certificate_cmd_output=show_sudi.read())
 
+    def test_validate_device_cert_valid_sign(self):
+        show_sudi = open(self.path + "/test_files/38_show_sudi_sign.txt", "r")
+        self.bi._validate_device_cert(cmd_output=show_sudi.read())
+
+    def test_validate_device_cert_invalid_sign_(self):
+        show_sudi = open(self.path + "/test_files/38_show_sudi_sign_bad.txt", "r")
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          self.bi._validate_device_cert,
+                          cmd_output=show_sudi.read())
+
+    def test_validate_device_cert_valid_sig_nonce(self):
+        show_sudi = open(self.path + "/test_files/38_show_sudi_sign_nonce.txt", "r")
+        self.bi._validate_device_cert(cmd_output=show_sudi.read())
 
     def test_boot_0_valid(self):
         show_plat = open(self.path + "/test_files/show_plat.txt", "r")
