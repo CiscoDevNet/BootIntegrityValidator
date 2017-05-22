@@ -1,7 +1,6 @@
 import os
 import sys
 import unittest
-import io
 
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
@@ -12,9 +11,10 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def setUp(self):
         self.path = os.path.abspath(".")
-        kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
-        kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
-        self.bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
+        #kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
+        #kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
+        #self.bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
+        a = 100
 
     def test_invalid_custom_cert(self):
         kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
@@ -36,25 +36,38 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_invalid_device_cert(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int.txt", "r")
-        show_sudi = open(self.path + "/test_files/isr4k_show_plat_sudi_sign_invalid.txt", "r")
+        show_sudi = open(self.path + "/test_files/isr4k_show_plat_sudi_sign_invalid_dev_cert.txt", "r")
+        kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
+
         self.assertRaises(BootIntegrityValidator.ValidationException,
-                          self.bi.validate,
+                          bi.validate,
                           show_platform_integrity_cmd_output=show_plat.read(),
                           show_platform_sudi_certificate_cmd_output=show_sudi.read())
 
     def test_validate_device_cert_valid_sign(self):
         show_sudi = open(self.path + "/test_files/38_show_sudi_sign.txt", "r")
-        self.bi._validate_device_cert(cmd_output=show_sudi.read())
+        kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
+        bi._validate_device_cert(cmd_output=show_sudi.read())
 
     def test_validate_device_cert_invalid_sign_(self):
         show_sudi = open(self.path + "/test_files/38_show_sudi_sign_bad.txt", "r")
+        kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
         self.assertRaises(BootIntegrityValidator.ValidationException,
-                          self.bi._validate_device_cert,
+                          bi._validate_device_cert,
                           cmd_output=show_sudi.read())
 
     def test_validate_device_cert_valid_sig_nonce(self):
         show_sudi = open(self.path + "/test_files/38_show_sudi_sign_nonce.txt", "r")
-        self.bi._validate_device_cert(cmd_output=show_sudi.read())
+        kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
+        bi._validate_device_cert(cmd_output=show_sudi.read())
 
     def test_validate_show_platform_integrity_valid_sign(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign.txt", "r")
@@ -81,7 +94,11 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_validate_invalid_platform(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_platform.txt", "r")
-        self.bi.validate(show_platform_integrity_cmd_output=show_plat.read())
+        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.ProductNotFound,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
 
 
 

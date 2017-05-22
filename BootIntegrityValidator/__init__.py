@@ -373,19 +373,19 @@ class BootIntegrityValidator(object):
 
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
 
-        if 'products' not in self._kgv or not isinstance(self._kgv['products'], list):
-            raise TypeError("Structure of known_good_values provided in initializer is invalid")
-
         platform_re = re.search(r"Platform:\s+(\S+)", cmd_output)
         if platform_re:
             cli_platform = platform_re.group(1)
         else:
-            raise ValueError("Platform not found in cmd_output")
+            raise BootIntegrityValidator.ProductNotFound("Platform not found in cmd_output")
 
         try:
             cli_platform_product = platforms.ProductFamily.find_product_by_platform(platform=cli_platform)
         except ValueError as e:
             raise BootIntegrityValidator.ProductNotFound("Mapping for platform {} to products unavailable".format(cli_platform))
+
+        if 'products' not in self._kgv or not isinstance(self._kgv['products'], list):
+            raise TypeError("Structure of known_good_values provided in initializer is invalid")
 
         kgv_products = self._kgv['products']
         kgv_product = None
@@ -461,6 +461,7 @@ class BootIntegrityValidator(object):
 
         validate_hash(cli_version=os_version_re.group(1), cli_hash=os_hash_re.group(1), versions=kgv_product['osImageVersions'])
 
+        # Successfully validated
         return
 
     @staticmethod
