@@ -9,6 +9,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA256
 
+from . import platforms
+
 
 class BootIntegrityValidator(object):
     """
@@ -337,13 +339,129 @@ class BootIntegrityValidator(object):
 
     def _validate_show_platform_integrity_cmd_output(self, cmd_output):
         """
+        Takes show platform integrity sign nonce xxx output and validates the following hashes against the values in the
+        known_good_value dictionary
+        -Boot 0 Hash
+        -Boot Loader Hash
+        -OS Hash
 
-        :return:
+
+        :param cmd_output: string
+
+        example input
+        isr4321#show platform integrity sign nonce 1
+        Platform: ISR4321/K9
+        Boot 0 Version: F01023R12.1817bb4af2014-05-23
+        Boot 0 Hash: B29EE97FA16911AE4058434EA7EC4464BD1341A57B17FB84550B2DDE2ABFDFD7
+        Boot Loader Version: 16.2(2r)
+        Boot Loader Hash: 5B02B6C175FEB8D097793.....38EC422FFB9BE53335772A9FED5A02D7
+        OS Version: 16.03.01
+        OS Hash: 4DDCC4A43F7913766370B....63181813AD810E32EC30936BEC1BA0DA26AE5AE2
+        PCR0: 2D42A273E4C475B8D53A42A667599549ABE6028EC062EF15DEB15A12B41B0EA9
+        PCR8: 6ADD719956CB838DE94AD850529EE77AF7A5222C05FE990E463D896498F37209
+        Signature version: 1
+        Signature:
+        6E4D47F83D7AFF80...1ECB65206BAF2D08A210E2F8B
+        isr4321#
+
+        :return: Nothing.
+
+        A ValueError will be raised if Version is not found in the kgv dictionary
+        A ValidationError will be raised if validation fails
+        A InvalidFormat if the kgv dict is invalid
         """
-        # Validate signature if present
-        if "Signature" in cmd_output:
-            self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
-                                                                        device_cert_object=self._cert_obj['device'])
+
+        assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
+
+        if 'products' not in self._kgv or not isinstance(self._kgv['products'], list):
+            raise TypeError("Structure of known_good_values provided in initializer is invalid")
+
+        platform_re = re.search(r"Platform:\s+(\S+)", cmd_output)
+        if platform_re:
+            cli_platform = platform_re.group(1)
+        else:
+            raise ValueError("Platform not found in cmd_output")
+
+        try:
+            cli_platform_product = platforms.ProductFamily.find_product_by_platform(platform=cli_platform)
+        except ValueError as e:
+            raise BootIntegrityValidator.ProductNotFound("Mapping for platform {} to products unavailable".format(cli_platform))
+
+        kgv_products = self._kgv['products']
+        kgv_product = None
+        for product in kgv_products:
+            if not isinstance(product, dict):
+                raise BootIntegrityValidator.InvalidFormat("element of known_good_value['products'] provided in initializer is not a dict: %r" % type(product))
+            if product['product'] == cli_platform_product:
+                kgv_product = product
+                break
+
+        if not kgv_product:
+            raise BootIntegrityValidator.ProductNotFound("Product '{}' not found in known_good_values".format(cli_platform_product))
+
+        def validate_hash(cli_version, cli_hash, versions):
+            """
+            Looks for the cli_version in the versions and if present then checks the cli_hash against biv_hashes in entries
+
+            :param cli_version: str
+            :param cli_hash:  str
+            :param versions:  list of dict
+            :return: Nothing if validation successful
+
+            :raises ValueError if cli_version not found in versions
+            :raises ValidationError if cli_version found but none of biv_entries found
+            :raises TypeError, KeyError if versions is invalid format
+            """
+
+            assert isinstance(cli_version, six.string_types), "cli_version should be a string type:  %r" % type(cli_version)
+            assert isinstance(cli_hash, six.string_types), "cli_hash should be a string type:  %r" % type(cli_hash)
+            assert isinstance(versions, list), "versions should be a list: %r" % type(versions)
+            assert all([isinstance(x, dict) for x in versions]), "all elements in versions should be dict"
+
+            for version in versions:
+                if version['version'] == cli_version:
+                    for entry in version['entries']:
+                        if entry['biv_hash'] == cli_hash:
+                            return
+                    raise BootIntegrityValidator.ValidationException('version {} found in versions but hash not found in list of valid hashes'.format(cli_version))
+            raise ValueError('version {} not found in versions'.format(cli_version))
+
+        # Got the KGV for this platform
+        # Check the boot0Version first
+        boot_0_version_re = re.search(pattern=r"Boot 0 Version:\s+(\S+)", string=cmd_output)
+        boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:\s+(\S+)", string=cmd_output)
+        if boot_0_hash_re is None or boot_0_version_re is None:
+            raise ValueError("Boot 0 Version of Hash not found in cmd_output")
+
+        if 'boot0Versions' not in kgv_product:
+            raise TypeError("boot0Version not present in element of known_good_values['products']")
+
+        # Validate boot0Versions
+        validate_hash(cli_version=boot_0_version_re.group(1), cli_hash=boot_0_hash_re.group(1), versions=kgv_product['boot0Versions'])
+
+        # Check the bootLoader second
+        boot_loader_version_re = re.search(pattern=r"Boot Loader Version:\s+(\S+)", string=cmd_output)
+        boot_loader_hash_re = re.search(pattern=r"Boot Loader Hash:\s+(\S+)", string=cmd_output)
+        if boot_loader_hash_re is None or boot_loader_version_re is None:
+            raise ValueError("Boot Loader Version of Hash not found in cmd_output")
+
+        if 'bootLoaderVersions' not in kgv_product:
+            raise TypeError("bootLoaderVersion not present in element of known_good_values['products']")
+
+        validate_hash(cli_version=boot_loader_version_re.group(1), cli_hash=boot_loader_hash_re.group(1), versions=kgv_product['bootLoaderVersions'])
+
+        # Check the OS third
+        os_version_re = re.search(pattern=r"OS Version:\s+(\S+)", string=cmd_output)
+        os_hash_re = re.search(pattern=r"OS Hash:\s+(\S+)", string=cmd_output)
+        if os_hash_re is None or os_version_re is None:
+            raise ValueError("OS Version of Hash not found in cmd_output")
+
+        if 'osImageVersions' not in kgv_product:
+            raise TypeError("osImageVersions not present in element of known_good_values['products']")
+
+        validate_hash(cli_version=os_version_re.group(1), cli_hash=os_hash_re.group(1), versions=kgv_product['osImageVersions'])
+
+        return
 
     @staticmethod
     def _validate_show_platform_integrity_cmd_output_signature(cmd_output, device_cert_object):
