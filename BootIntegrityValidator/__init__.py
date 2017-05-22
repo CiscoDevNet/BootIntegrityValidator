@@ -48,8 +48,8 @@ class BootIntegrityValidator(object):
         :param signing_cert: file like object containing the signing_cert
         """
 
-        assert isinstance(known_good_values, bytes), "known_good_value should be of type bytes"
-        assert known_good_values_signature is None or isinstance(known_good_values_signature, bytes), "known_good_value_signature should be None or bytes"
+        assert isinstance(known_good_values, bytes), "known_good_value should be of type bytes, was %r" % type(known_good_values)
+        assert known_good_values_signature is None or isinstance(known_good_values_signature, bytes), "known_good_value_signature should be None or bytes, was %r" % type(known_good_values_signature)
 
         # Boot strap Trusted Root and then validate Sub-CAs
 
@@ -184,9 +184,9 @@ class BootIntegrityValidator(object):
         :raises: VersionNotFound - Software version not found in KGV
         """
 
-        assert isinstance(show_platform_integrity_cmd_output, six.string_types), "show_platform_integrity_cmd_output should be a string type"
+        assert isinstance(show_platform_integrity_cmd_output, six.string_types), "show_platform_integrity_cmd_output should be a string type was %r" % type(show_platform_integrity_cmd_output)
         assert show_platform_sudi_certificate_cmd_output is None or \
-               isinstance(show_platform_sudi_certificate_cmd_output, six.string_types), "show_platform_sudi_certificate_cmd_output should be a string type"
+               isinstance(show_platform_sudi_certificate_cmd_output, six.string_types), "show_platform_sudi_certificate_cmd_output should be a string type was %r" % type(show_platform_sudi_certificate_cmd_output)
 
         if show_platform_sudi_certificate_cmd_output:
             # Validate the device certificate and signature on cli output if present

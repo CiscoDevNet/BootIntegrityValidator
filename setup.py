@@ -18,5 +18,6 @@ setup(name=__title__,
       author=__author__,
       author_email=__author_email__,
       packages=['BootIntegrityValidator'],
-      install_requires=requirements
+      install_requires=requirements,
+      package_data={'BootIntegrityValidator': ['certs/*.cer', 'certs/*.txt', 'certs/*.pem']}
 )
