@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import io
 
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
@@ -34,7 +35,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           known_good_values_signature=kgv_sig.read())
 
     def test_invalid_device_cert(self):
-        show_plat = open(self.path + "/test_files/show_plat.txt", "r")
+        show_plat = open(self.path + "/test_files/isr4k_show_plat.txt", "r")
         show_sudi = open(self.path + "/test_files/show_sudi.txt.invalid_cert", "r")
         self.assertRaises(BootIntegrityValidator.ValidationException,
                           self.bi.validate,
@@ -55,6 +56,32 @@ class TestBootIntegrityValidator(unittest.TestCase):
         show_sudi = open(self.path + "/test_files/38_show_sudi_sign_nonce.txt", "r")
         self.bi._validate_device_cert(cmd_output=show_sudi.read())
 
+    def test_validate_show_platform_integrity_valid_sign(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_sign.txt", "r")
+        dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
+        dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
+        BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature(cmd_output=show_plat.read(),
+                                                                                      device_cert_object=dev_cert_obj)
+
+    def test_validate_show_platform_integrity_valid_sign_nonce(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_sign_nonce.txt", "r")
+        dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
+        dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
+        BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature(cmd_output=show_plat.read(),
+                                                                                      device_cert_object=dev_cert_obj)
+
+    def test_validate_show_platform_integrity_invalid_sign(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_sign_bad.txt", "r")
+        dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
+        dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature,
+                          cmd_output=show_plat.read(),
+                          device_cert_object=dev_cert_obj)
+
+
+
+    """
     def test_boot_0_valid(self):
         show_plat = open(self.path + "/test_files/show_plat.txt", "r")
         show_sudi = open(self.path + "/test_files/show_sudi.txt", "r")
@@ -63,7 +90,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
 
 
-    """
+
     def test_boot_0_not_found(self):
         a = 100 / 0
 

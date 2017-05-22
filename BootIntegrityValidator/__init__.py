@@ -61,8 +61,8 @@ class BootIntegrityValidator(object):
         # Validate the known_good_valuescrca2048_obj object if known_good_values_signature provided
         if known_good_values_signature:
             self._validate_kgv_input_signature(kgv=known_good_values,
-                                                   kgv_signature=known_good_values_signature,
-                                                   custom_signing_cert=True if custom_signing_cert else False)
+                                               kgv_signature=known_good_values_signature,
+                                               custom_signing_cert=True if custom_signing_cert else False)
 
         # Now the known_good_values is validated try to load the json. If successful we are ready
         try:
@@ -98,7 +98,7 @@ class BootIntegrityValidator(object):
             innerspace_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/innerspace.cer"))
             kgv_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/Known_Good_Values_PROD.pem"))
             self._trusted_store.add_cert(cert=crcam2_obj)
-            self._cert_obj['crcam2']  = crcam2_obj
+            self._cert_obj['crcam2'] = crcam2_obj
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=innerspace_obj)
             store_ctx.verify_certificate()
             self._trusted_store.add_cert(cert=innerspace_obj)
@@ -136,7 +136,12 @@ class BootIntegrityValidator(object):
         """
         signing_cert = self._cert_obj['custom'] if custom_signing_cert else self._cert_obj['Known_Good_Values_PROD']
         try:
-            OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha512")
+            if len(kgv_signature) == 512:
+                OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha512")
+            elif len(kgv_signature) == 256:
+                OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha256")
+            else:
+                raise BootIntegrityValidator.InvalidFormat("The kgv_signature seems to be invalid, should be either a sha-2-256 or sha-2-512")
         except OpenSSL.crypto.Error as e:
             raise BootIntegrityValidator.ValidationException(
                 "The known_good_values failed signature failed signature validation")
@@ -184,6 +189,8 @@ class BootIntegrityValidator(object):
         if show_platform_sudi_certificate_cmd_output:
             # Validate the device certificate and signature on cli output if present
             self._validate_device_cert(cmd_output=show_platform_sudi_certificate_cmd_output)
+
+        self._validate_show_platform_integrity_cmd_output(cmd_output=show_platform_integrity_cmd_output)
 
     def _validate_device_cert(self, cmd_output):
         """
@@ -253,11 +260,9 @@ class BootIntegrityValidator(object):
         # Validate signature if present
         if "Signature" in cmd_output:
             self._validate_show_platform_sudi_output(cmd_output=cmd_output,
-                                                    ca_cert_object=self._cert_obj['crca2048'],
-                                                    sub_ca_cert_object=self._cert_obj['ACT2SUDICA'],
-                                                    device_cert_object=self._cert_obj['device'])
-        else:
-            b = 200
+                                                     ca_cert_object=self._cert_obj['crca2048'],
+                                                     sub_ca_cert_object=self._cert_obj['ACT2SUDICA'],
+                                                     device_cert_object=self._cert_obj['device'])
 
     @staticmethod
     def _validate_show_platform_sudi_output(cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object):
@@ -286,13 +291,14 @@ class BootIntegrityValidator(object):
         -----END CERTIFICATE-----
         Signature version: 1
         Signature:
-        B1D5EA8BC99C5C7F7F19E0A10B60D7BEC904A66BCFD495A4BC45FF55F137F35F644F730120F74F17FAC88555304A28686699259A7AE772331917A51D66FFBF1122F6D757C7EE430D33F0B79507696570E19C92EEC6033F2CCB5E24EA9BC7CAF0274D1BF3EE3419A3B3C55AB62B95B2FE6D4FAFFEF2D62ADB8A782E14EB3C92DB2E72DB3D3FC1D2CF91DBFBBDE82A4A03BD505FE1AB109976C20AC58D651EF30D80D757832D12AAAD49DC6FF7DCAD4E28D9E22875FC3D157A4FF185313DF05831706505FE7CAF2BEFD5579EA182D1A9C70AE1788D3C539DE7ACC1E3FDDD800E08DB88C29C7B010E6A053622079B4DF476DE5D07AE6AAF2BEC4DCE63F2AA1C1DD2
+        B1D5EA8BC99C5C7F7F19E.......DF476DE5D07AE6AAF2BEC4DCE63F2AA1C1DD2
         isr4321#
 
         :param ca: Openssl.crypto.x509
         :param sub: openssl.crypto.x509
         :param device: Openssl.crypto.x509
-        :return: bool - validated or not
+        :return: None if sucessfully validatated
+        :raises: ValidationException if signature failed valiation
         """
 
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
@@ -326,7 +332,78 @@ class BootIntegrityValidator(object):
 
         device_rsa_key = RSA.importKey(device_pkey_bin)
         verifier = PKCS1_v1_5.new(device_rsa_key)
-        if verifier.verify(calculated_hash, sig_signature_bytes):
-            return
-        else:
+        if not verifier.verify(calculated_hash, sig_signature_bytes):
             raise BootIntegrityValidator.ValidationException("Signature on show platform sudi output failed validation")
+
+    def _validate_show_platform_integrity_cmd_output(self, cmd_output):
+        """
+
+        :return:
+        """
+        # Validate signature if present
+        if "Signature" in cmd_output:
+            self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
+                                                                        device_cert_object=self._cert_obj['device'])
+
+    @staticmethod
+    def _validate_show_platform_integrity_cmd_output_signature(cmd_output, device_cert_object):
+        """
+
+        :param cmd_output: str of output
+
+        example input
+
+        isr4321#show platform integrity sign nonce 1
+        Platform: ISR4321/K9
+        Boot 0 Version: F01023R12.1817bb4af2014-05-23
+        Boot 0 Hash: B29EE97FA16911AE4058434EA7EC4464BD1341A57B17FB84550B2DDE2ABFDFD7
+        Boot Loader Version: 16.2(2r)
+        Boot Loader Hash: 5B02B6C175FEB8D097.....FB9BE53335772A9FED5A02D7
+        OS Version: 16.03.01
+        OS Hash: 4DDCC4A43F791......98963181813AD810E32EC30936BEC1BA0DA26AE5AE2
+        PCR0: 2D42A273E4C475B8D53A42A667599549ABE6028EC062EF15DEB15A12B41B0EA9
+        PCR8: 6ADD719956CB838DE94AD850529EE77AF7A5222C05FE990E463D896498F37209
+        Signature version: 1
+        Signature:
+        6E4D47F83D7AFF804CD4B6D002........31D330CBAF2D08A210E2F8B
+        isr4321#
+
+        :param device_cert_object: Openssl.crypto.x509
+        :return:
+        """
+
+        assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
+        assert isinstance(device_cert_object, OpenSSL.crypto.X509), "device_cert_object is not an OpenSSL.crypto.X509type: %r" % type(device_cert_object)
+
+        sigs = re.search(r"Signature\s+version:\s(\d+).+Signature:.+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
+        sig_version = sigs.group(1)
+        sig_signature = sigs.group(2)
+
+        nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
+        nonce = None
+        if nonce_re:
+            nonce = int(nonce_re.group(1))
+
+        # Convert the signature from output in hex to bytes
+        sig_signature_bytes = base64.b16decode(s=sig_signature)
+
+        pcr0_re = re.search(r"PCR0:\s+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
+        pcr0 = pcr0_re.group(1)
+        pcr8_re = re.search(r"PCR8:\s+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
+        pcr8 = pcr8_re.group(1)
+
+        # data to be hashed
+        header = struct.pack('>QI', int(nonce), int(sig_version)) if nonce else struct.pack('>I', int(sig_version))
+        pcr0_bytes = base64.b16decode(pcr0)
+        pcr8_bytes = base64.b16decode(pcr8)
+        data_to_be_hashed = header + pcr0_bytes + pcr8_bytes
+        calculated_hash = SHA256.new(data_to_be_hashed)
+
+        # validate calculated hash
+        device_pkey_bin = OpenSSL.crypto.dump_publickey(type=OpenSSL.crypto.FILETYPE_ASN1,
+                                                        pkey=device_cert_object.get_pubkey())
+
+        device_rsa_key = RSA.importKey(device_pkey_bin)
+        verifier = PKCS1_v1_5.new(device_rsa_key)
+        if not verifier.verify(calculated_hash, sig_signature_bytes):
+            raise BootIntegrityValidator.ValidationException("Signature on show platform integrity output failed validation")
