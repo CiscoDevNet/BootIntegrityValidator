@@ -385,7 +385,7 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.ProductNotFound("Mapping for platform {} to products unavailable".format(cli_platform))
 
         if 'products' not in self._kgv or not isinstance(self._kgv['products'], list):
-            raise TypeError("Structure of known_good_values provided in initializer is invalid")
+            raise BootIntegrityValidator.InvalidFormat("Structure of known_good_values provided in initializer is invalid")
 
         kgv_products = self._kgv['products']
         kgv_product = None
@@ -410,7 +410,7 @@ class BootIntegrityValidator(object):
 
             :raises ValueError if cli_version not found in versions
             :raises ValidationError if cli_version found but none of biv_entries found
-            :raises TypeError, KeyError if versions is invalid format
+            :raises  BootIntegrityValidator.InvalidFormat, KeyError if versions is invalid format
             """
 
             assert isinstance(cli_version, six.string_types), "cli_version should be a string type:  %r" % type(cli_version)
@@ -434,7 +434,7 @@ class BootIntegrityValidator(object):
             raise ValueError("Boot 0 Version of Hash not found in cmd_output")
 
         if 'boot0Versions' not in kgv_product:
-            raise TypeError("boot0Version not present in element of known_good_values['products']")
+            raise BootIntegrityValidator.InvalidFormat("boot0Version not present in element of known_good_values['products']")
 
         # Validate boot0Versions
         validate_hash(cli_version=boot_0_version_re.group(1), cli_hash=boot_0_hash_re.group(1), versions=kgv_product['boot0Versions'])
@@ -446,7 +446,7 @@ class BootIntegrityValidator(object):
             raise ValueError("Boot Loader Version of Hash not found in cmd_output")
 
         if 'bootLoaderVersions' not in kgv_product:
-            raise TypeError("bootLoaderVersion not present in element of known_good_values['products']")
+            raise BootIntegrityValidator.InvalidFormat("bootLoaderVersion not present in element of known_good_values['products']")
 
         validate_hash(cli_version=boot_loader_version_re.group(1), cli_hash=boot_loader_hash_re.group(1), versions=kgv_product['bootLoaderVersions'])
 
@@ -457,7 +457,7 @@ class BootIntegrityValidator(object):
             raise ValueError("OS Version of Hash not found in cmd_output")
 
         if 'osImageVersions' not in kgv_product:
-            raise TypeError("osImageVersions not present in element of known_good_values['products']")
+            raise BootIntegrityValidator.InvalidFormat("osImageVersions not present in element of known_good_values['products']")
 
         validate_hash(cli_version=os_version_re.group(1), cli_hash=os_hash_re.group(1), versions=kgv_product['osImageVersions'])
 
