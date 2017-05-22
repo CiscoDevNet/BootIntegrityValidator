@@ -100,23 +100,23 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           bi.validate,
                           show_platform_integrity_cmd_output=show_plat.read())
 
+    def test_boot_0_version_not_found(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_missing_boot_0_version.txt", "r")
+        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.VersionNotFound,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
 
-
-
+    def test_boot_0_version_invalid(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_boot_0_version.txt", "r")
+        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
 
     """
-    def test_boot_0_valid(self):
-        show_plat = open(self.path + "/test_files/show_plat.txt", "r")
-        show_sudi = open(self.path + "/test_files/show_sudi.txt", "r")
-        self.bi.validate(show_platform_integrity_cmd_output=show_plat.read(),
-                         show_platform_sudi_certificate_cmd_output=show_sudi.read())
-
-
-
-
-    def test_boot_0_not_found(self):
-        a = 100 / 0
-
     def test_boot_0_invalid(self):
         a = 100 / 0
 

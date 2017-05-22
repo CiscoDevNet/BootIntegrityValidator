@@ -424,7 +424,7 @@ class BootIntegrityValidator(object):
                         if entry['biv_hash'] == cli_hash:
                             return
                     raise BootIntegrityValidator.ValidationException('version {} found in versions but hash not found in list of valid hashes'.format(cli_version))
-            raise ValueError('version {} not found in versions'.format(cli_version))
+            raise BootIntegrityValidator.VersionNotFound('version {} not found in versions'.format(cli_version))
 
         # Got the KGV for this platform
         # Check the boot0Version first
