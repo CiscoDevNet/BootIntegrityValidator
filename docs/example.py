@@ -21,7 +21,10 @@ import BootIntegrityValidator
 #####################################################################################
 
 kgv = open("example_kgv.json", "rb")
-biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=kgv.read())
+kgv_sig = open("example_kgv.json.signature", "rb")
+biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=kgv.read(),
+                                                    known_good_values_signature=kgv_sig.read())
+
 
 #####################################################################################
 #
