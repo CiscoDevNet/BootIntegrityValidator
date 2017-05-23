@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 # Pull the install_requires from the requirement.txt
 with open("requirements.txt") as f:
@@ -19,5 +19,9 @@ setup(name=__title__,
       author_email=__author_email__,
       packages=['BootIntegrityValidator'],
       install_requires=requirements,
-      package_data={'BootIntegrityValidator': ['certs/*.cer', 'certs/*.txt', 'certs/*.pem']}
+      package_data={'BootIntegrityValidator': ['certs/*.cer', 'certs/*.txt', 'certs/*.pem']},
+      classifiers=['Development Status :: 3 - Alpha',
+                   'Programming Language :: Python :: 2',
+                   'Programming Language :: Python :: 3',
+                   'Topic :: Security :: Cryptography']
 )
