@@ -24,5 +24,5 @@ setup(name=__title__,
                    'Programming Language :: Python :: 2',
                    'Programming Language :: Python :: 3',
                    'Topic :: Security :: Cryptography'],
-      url="http://www.google.com"
+      url="https://github.com/ministryofjay/BootIntegrityValidator"
 )
