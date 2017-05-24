@@ -5,3 +5,4 @@ build/
 .pypirc
 dist/
 *.egg-info
+docs/_build/
