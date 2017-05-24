@@ -23,5 +23,6 @@ setup(name=__title__,
       classifiers=['Development Status :: 3 - Alpha',
                    'Programming Language :: Python :: 2',
                    'Programming Language :: Python :: 3',
-                   'Topic :: Security :: Cryptography']
+                   'Topic :: Security :: Cryptography'],
+      url="http://www.google.com"
 )
