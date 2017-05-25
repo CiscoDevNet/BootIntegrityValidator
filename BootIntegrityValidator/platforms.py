@@ -8,7 +8,8 @@ class ProductFamily(object):
     _products = {'ISR4321/K9': _ISR4K,
                  'ISR4451/K9': _ISR4K,
                  'ISR4331/K9': _ISR4K,
-                 'ISR4221/K9': _ISR4K}
+                 'ISR4221/K9': _ISR4K,
+                 'WS-C3850-24XU': _CAT3K}
 
     @classmethod
     def find_product_by_platform(cls, platform):
