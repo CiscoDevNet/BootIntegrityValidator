@@ -134,6 +134,56 @@
             
   <div class="section" id="exceptions">
 <span id="id1"></span><h1>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h1>
+<blockquote>
+<div>If validation fails a custom exception will be raised for the following reasons:</div></blockquote>
+<ul class="simple">
+<li><strong>BootIntegrityValidator.BootIntegrityValidator.ValidationException</strong><ul>
+<li>When calling validate() if the hashes do not match any of the valid hashes within the KGV file.  This is an indication of compromise of the device.</li>
+<li>When initializing the object if validation of the signature file fails or the validation of the custom signing cert fails</li>
+</ul>
+</li>
+<li><strong>BootIntegrityValidator.BootIntegrityValidator.VersionNotFound</strong><ul>
+<li>When calling validate() if the version of software used by the device is not within the KGV file.  It is not possible to determine whether or not the device is compromised.  Contact Cisco to obtain the latest KGV file.</li>
+</ul>
+</li>
+<li><strong>BootIntegrityValidator.BootIntegrityValidator.ProductNotFound</strong><ul>
+<li>The product (the model number) was unable to be mapped to the &#8216;product&#8217; in the KGV.  For example ISR4321/K9 should be mapped to &#8220;ISR4K&#8221;.  The ProductFamily Object within BootIntegrityValidator/platforms.py may need to be updated.</li>
+<li>The &#8216;product&#8217; is not found within the KGV file. It is not possible to determine whether or not the device is compromised.  Contact Cisco to obtain the latest KGV file.</li>
+</ul>
+</li>
+<li><strong>BootIntegrityValidator.BootIntegrityValidator.InvalidFormat</strong><ul>
+<li>If the KGV file is not formatted correctly.  Obtain a latest copy of the KGV file and a signature file to validate the file hasn&#8217;t been modified.</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># An instance of BootIntegrityValidator has already been initialized as &#39;biv&#39;</span>
+<span class="c1"># with the known good values (KGV).</span>
+
+<span class="n">show_plat_suid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;example_show_plat_sudi.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
+<span class="n">suid</span> <span class="o">=</span> <span class="n">show_plat_suid</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">show_plat_int</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;example_show_plat_int.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
+<span class="n">spi</span> <span class="o">=</span> <span class="n">show_plat_int</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">biv</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">show_platform_integrity_cmd_output</span><span class="o">=</span><span class="n">spi</span><span class="p">,</span>
+                 <span class="n">show_platform_sudi_certificate_cmd_output</span><span class="o">=</span><span class="n">suid</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Successfully validated!&quot;</span><span class="p">)</span>
+
+<span class="k">except</span> <span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">InvalidFormat</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;know_good_values had an invalid format&quot;</span><span class="p">)</span>
+
+<span class="k">except</span> <span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">VersionNotFound</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Version of software Not Found in known_good_values&quot;</span><span class="p">)</span>
+
+<span class="k">except</span> <span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">ProductNotFound</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Product in cli output not mapped to &#39;product&#39; in known_good_values&quot;</span><span class="p">)</span>
+
+<span class="k">except</span> <span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">BootIntegrityValidator</span><span class="o">.</span><span class="n">ValidationException</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Validation failed&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 
 
