@@ -7,6 +7,8 @@ Welcome to BootIntegrityValidator's documentation!
 ==================================================
 Welcome to the BootIntegrityValidator documentation.
 
+Source on `GitHub <https://github.com/ministryofjay/BootIntegrityValidator>`_
+
 Certain Cisco products include a feature called Boot Integrity Visability.  The feature is designed to allow
 an administrator take some internal state measurements from the operating system of the device.  These samples
 can then be compared against "known good values" (KGVs) provided by Cisco.  This can confirm if the device is
