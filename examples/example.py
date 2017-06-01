@@ -48,18 +48,21 @@ spi = show_plat_int.read()
 #####################################################################################
 
 try:
-    biv.validate(show_platform_integrity_cmd_output=spi,
-                 show_platform_sudi_certificate_cmd_output=suid)
+    biv.validate(show_platform_integrity_cmd_output=suid)
     print("Successfully validated!")
 
 except BootIntegrityValidator.BootIntegrityValidator.InvalidFormat:
     print("know_good_values had an invalid format")
+    raise
 
 except BootIntegrityValidator.BootIntegrityValidator.VersionNotFound:
     print("Version of software Not Found in known_good_values")
+    raise
 
 except BootIntegrityValidator.BootIntegrityValidator.ProductNotFound:
     print("Product in cli output not mapped to 'product' in known_good_values")
+    raise
 
 except BootIntegrityValidator.BootIntegrityValidator.ValidationException:
     print("Validation failed")
+    raise
