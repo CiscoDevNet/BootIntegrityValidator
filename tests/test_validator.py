@@ -88,6 +88,15 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           cmd_output=show_plat.read(),
                           device_cert_object=dev_cert_obj)
 
+    def test_validate_show_platform_integrity_invalid_pcr0(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign_nonce_invalid_pcr0.txt", "r")
+        dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
+        dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature,
+                          cmd_output=show_plat.read(),
+                          device_cert_object=dev_cert_obj)
+
     def test_validate_invalid_platform(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_platform.txt", "r")
         kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")

@@ -431,7 +431,7 @@ class BootIntegrityValidator(object):
         boot_0_version_re = re.search(pattern=r"Boot 0 Version:\s+(\S+)", string=cmd_output)
         boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:\s+(\S+)", string=cmd_output)
         if boot_0_hash_re is None or boot_0_version_re is None:
-            raise ValueError("Boot 0 Version of Hash not found in cmd_output")
+            raise BootIntegrityValidator.InvalidFormat("Boot 0 Version of Hash not found in cmd_output")
 
         if 'boot0Versions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("boot0Version not present in element of known_good_values['products']")
@@ -507,15 +507,15 @@ class BootIntegrityValidator(object):
         sig_signature_bytes = base64.b16decode(s=sig_signature)
 
         pcr0_re = re.search(r"PCR0:\s+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
-        pcr0 = pcr0_re.group(1)
+        pcr0_received_text = pcr0_re.group(1)
         pcr8_re = re.search(r"PCR8:\s+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
-        pcr8 = pcr8_re.group(1)
+        pcr8_received_text = pcr8_re.group(1)
 
         # data to be hashed
         header = struct.pack('>QI', int(nonce), int(sig_version)) if nonce else struct.pack('>I', int(sig_version))
-        pcr0_bytes = base64.b16decode(pcr0)
-        pcr8_bytes = base64.b16decode(pcr8)
-        data_to_be_hashed = header + pcr0_bytes + pcr8_bytes
+        pcr0_received_bytes = base64.b16decode(pcr0_received_text)
+        pcr8_received_bytes = base64.b16decode(pcr8_received_text)
+        data_to_be_hashed = header + pcr0_received_bytes + pcr8_received_bytes
         calculated_hash = SHA256.new(data_to_be_hashed)
 
         # validate calculated hash
@@ -526,3 +526,44 @@ class BootIntegrityValidator(object):
         verifier = PKCS1_v1_5.new(device_rsa_key)
         if not verifier.verify(calculated_hash, sig_signature_bytes):
             raise BootIntegrityValidator.ValidationException("Signature on show platform integrity output failed validation")
+
+        # Signature over the reported PCR0 and PRCR8 passed.  Now they need to be computed and compared against
+        # the received values.
+        # PCR0 is extended using 256-bits of 0 as the initial PCR0 and the SHA256 hash of Boot 0 Hash measurement.
+        # The PRC0 is then extended further using the SHA256 hash of the Boot Loader measurement
+        # The PCR8 is extended using 256-bits of 0 as the initial PRC8 and the SHA256 hash of OS Hash measurement.
+
+        # PCR0 Calculation
+        boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:\s+(\S+)", string=cmd_output)
+        if not boot_0_hash_re:
+            raise BootIntegrityValidator.InvalidFormat("Boot 0 Hash not found in cmd_output")
+        boot_0_hash_bytes = base64.b16decode(boot_0_hash_re.group(1))
+        b0_measurement_hash = SHA256.new(boot_0_hash_bytes).digest()
+        init = b"\x00" * 32
+        pcr0_computed = SHA256.new(init + b0_measurement_hash).digest()
+        # Now repeat for the Boot Loader measurement
+        boot_loader_hash_re = re.search(pattern=r"Boot Loader Hash:\s+(\S+)", string=cmd_output)
+        if not boot_loader_hash_re:
+            raise BootIntegrityValidator.InvalidFormat("Boot Loader Hash not found in cmd_output")
+        boot_loader_hash_bytes = base64.b16decode(boot_loader_hash_re.group(1))
+        bl_measurement_hash = SHA256.new(boot_loader_hash_bytes).digest()
+        pcr0_computed = SHA256.new(pcr0_computed + bl_measurement_hash).digest()
+        pcr0_computed_text = base64.b16encode(pcr0_computed).decode()
+
+        if pcr0_computed_text != pcr0_received_text:
+            raise BootIntegrityValidator.ValidationException("The received PCR0 was signed correctly but doesn't match the computed PRC0 using the given measurements.")
+
+        # PCR8 Calculation
+        os_hash_bytes_re = re.search(pattern=r"OS Hash:\s+(\S+)", string=cmd_output)
+        if not os_hash_bytes_re:
+            raise BootIntegrityValidator.InvalidFormat("OS Hash not found in cmd_output")
+
+        os_hash_bytes = base64.b16decode(os_hash_bytes_re.group(1))
+        os_measurement_hash = SHA256.new(os_hash_bytes).digest()
+        init = b"\x00" * 32
+        pcr8_computed = SHA256.new(init + os_measurement_hash).digest()
+        pcr8_computed_text = base64.b16encode(pcr8_computed).decode()
+
+        if pcr8_computed_text != pcr8_received_text:
+            raise BootIntegrityValidator.ValidationException("The received PCR8 was signed correctly but doesn't match the computed PRC0 using the given measurements.")
+
