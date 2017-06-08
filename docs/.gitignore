@@ -1,4 +1,0 @@
-# Need a folder specific .gitignore to override the project .gitignore
-# This is because build/ is excluded at the project level
-!build/
-
