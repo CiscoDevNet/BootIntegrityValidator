@@ -1,7 +1,7 @@
 import six
 
 class ProductFamily(object):
-    _ISR4K = "ISR4K"
+    _ISR4K = "ISR4000"
     _ASR1K = "ASR1K"
     _CAT3K = "CAT3K"
 
