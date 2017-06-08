@@ -5,10 +5,18 @@ class ProductFamily(object):
     _ASR1K = "ASR1000"
     _CAT3K = "CAT3K"
 
-    _products = {'ISR4321/K9': _ISR4K,
-                 'ISR4451/K9': _ISR4K,
+    _products = {'ASR1001-HX': _ASR1K,
+                 'ASR1001-X': _ASR1K,
+                 'ASR1002-HX': _ASR1K,
+                 'ASR1002-X': _ASR1K,
+                 'ASR1013': _ASR1K,
+                 'ISR4451-X/K9': _ISR4K,
+                 'ISR4351/K9': _ISR4K,
                  'ISR4331/K9': _ISR4K,
+                 'ISR4321/K9': _ISR4K,
                  'ISR4221/K9': _ISR4K,
+                 'WS-C3650-12X48UQ': _CAT3K,
+                 'WS-C3850-12XS': _CAT3K,
                  'WS-C3850-24XU': _CAT3K}
 
     @classmethod
