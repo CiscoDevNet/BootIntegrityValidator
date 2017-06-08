@@ -99,7 +99,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_validate_invalid_platform(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_platform.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.ProductNotFound,
                           bi.validate,
@@ -107,7 +107,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_boot_0_version_not_found(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_missing_boot_0_version.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.VersionNotFound,
                           bi.validate,
@@ -115,7 +115,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_boot_0_version_invalid(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_boot_0_version.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.ValidationException,
                           bi.validate,
@@ -123,7 +123,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_boot_loader_version_not_found(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_missing_boot_0_version.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.VersionNotFound,
                           bi.validate,
@@ -131,7 +131,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_boot_loader_version_invalid(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_boot_0_version.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.ValidationException,
                           bi.validate,
@@ -139,7 +139,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_os_version_not_found(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_missing_os_version.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.VersionNotFound,
                           bi.validate,
@@ -147,7 +147,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_os_version_invalid(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_bad_os_version.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         self.assertRaises(BootIntegrityValidator.ValidationException,
                           bi.validate,
@@ -155,7 +155,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
 
     def test_validate(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int.txt", "r")
-        kgv = open(self.path + "/test_files/kgv_fcs_2_0_format.json", "rb")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
