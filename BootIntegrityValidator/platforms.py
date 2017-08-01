@@ -1,9 +1,7 @@
 import six
 
 class ProductFamily(object):
-    _ISR4200 = "ISR4200"
-    _ISR4300 = "ISR4300"
-    _ISR4400 = "ISR4400"
+    _ISR4K = "ISR4000"
     _ASR1K = "ASR1000"
     _CAT3K = "CAT3K"
 
@@ -12,11 +10,11 @@ class ProductFamily(object):
                  'ASR1002-HX': _ASR1K,
                  'ASR1002-X': _ASR1K,
                  'ASR1013': _ASR1K,
-                 'ISR4451-X/K9': _ISR4400,
-                 'ISR4351/K9': _ISR4300,
-                 'ISR4331/K9': _ISR4300,
-                 'ISR4321/K9': _ISR4300,
-                 'ISR4221/K9': _ISR4200,
+                 'ISR4451-X/K9': _ISR4K,
+                 'ISR4351/K9': _ISR4K,
+                 'ISR4331/K9': _ISR4K,
+                 'ISR4321/K9': _ISR4K,
+                 'ISR4221/K9': _ISR4K,
                  'WS-C3650-12X48UQ': _CAT3K,
                  'WS-C3850-12XS': _CAT3K,
                  'WS-C3850-24XS': _CAT3K,
