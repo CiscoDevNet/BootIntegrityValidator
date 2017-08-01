@@ -41,6 +41,12 @@ class BootIntegrityValidator(object):
         Software Version Not Found
         """
 
+    class MissingInfo(BaseException):
+        """
+        Information in the "show platform" command output is missing.
+        Like the hash output
+        """
+
     def __init__(self, known_good_values, known_good_values_signature=None, custom_signing_cert=None):
         """
         :param known_good_values: bytes - containing JSON that is the KGV
@@ -428,10 +434,15 @@ class BootIntegrityValidator(object):
 
         # Got the KGV for this platform
         # Check the boot0Version first
-        boot_0_version_re = re.search(pattern=r"Boot 0 Version:\s+(\S+)", string=cmd_output)
-        boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:\s+(\S+)", string=cmd_output)
+        boot_0_version_re = re.search(pattern=r"Boot 0 Version:\s*(\S*)\n", string=cmd_output)
+        boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:\s*(\S*)\n", string=cmd_output)
+
         if boot_0_hash_re is None or boot_0_version_re is None:
-            raise BootIntegrityValidator.InvalidFormat("Boot 0 Version of Hash not found in cmd_output")
+            raise BootIntegrityValidator.MissingInfo("'Boot 0 Version' or 'Boot 0 Hash' not found in cmd_output")
+        if not boot_0_version_re.group(1):
+            raise BootIntegrityValidator.MissingInfo("Boot 0 Version not present in cmd_output")
+        if not boot_0_hash_re.group(1):
+            raise BootIntegrityValidator.MissingInfo("Boot 0 Hash not present in cmd_output")
 
         if 'boot0Versions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("boot0Version not present in element of known_good_values['products']")
@@ -440,10 +451,15 @@ class BootIntegrityValidator(object):
         validate_hash(cli_version=boot_0_version_re.group(1), cli_hash=boot_0_hash_re.group(1), versions=kgv_product['boot0Versions'])
 
         # Check the bootLoader second
-        boot_loader_version_re = re.search(pattern=r"Boot Loader Version:\s+(\S+)", string=cmd_output)
-        boot_loader_hash_re = re.search(pattern=r"Boot Loader Hash:\s+(\S+)", string=cmd_output)
+        boot_loader_version_re = re.search(pattern=r"Boot Loader Version:\s*(\S*)\n", string=cmd_output)
+        boot_loader_hash_re = re.search(pattern=r"Boot Loader Hash:\s*(\S*)\n", string=cmd_output)
+
         if boot_loader_hash_re is None or boot_loader_version_re is None:
-            raise ValueError("Boot Loader Version of Hash not found in cmd_output")
+            raise BootIntegrityValidator.MissingInfo("'Boot Loader Version' or 'Boot Loader Hash' not found in cmd_output")
+        if not boot_loader_version_re.group(1):
+            raise BootIntegrityValidator.MissingInfo("Boot Loader Version not present in cmd_output")
+        if not boot_loader_hash_re.group(1):
+            raise BootIntegrityValidator.MissingInfo("Boot Loader Hash not present in cmd_output")
 
         if 'bootLoaderVersions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("bootLoaderVersion not present in element of known_good_values['products']")
@@ -451,10 +467,15 @@ class BootIntegrityValidator(object):
         validate_hash(cli_version=boot_loader_version_re.group(1), cli_hash=boot_loader_hash_re.group(1), versions=kgv_product['bootLoaderVersions'])
 
         # Check the OS third
-        os_version_re = re.search(pattern=r"OS Version:\s+(\S+)", string=cmd_output)
-        os_hash_re = re.search(pattern=r"OS Hash:\s+(\S+)", string=cmd_output)
+        os_version_re = re.search(pattern=r"OS Version:\s*(\S*)\n", string=cmd_output)
+        os_hash_re = re.search(pattern=r"OS Hash:\s*(\S*)\n", string=cmd_output)
+
         if os_hash_re is None or os_version_re is None:
-            raise ValueError("OS Version of Hash not found in cmd_output")
+            raise BootIntegrityValidator.MissingInfo("'OS Version' or 'OS Hash' not found in cmd_output")
+        if not os_version_re.group(1):
+            raise BootIntegrityValidator.MissingInfo("OS Version not present in cmd_output")
+        if not os_hash_re.group(1):
+            raise BootIntegrityValidator.MissingInfo("OS Hash not present in cmd_output")
 
         if 'osImageVersions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("osImageVersions not present in element of known_good_values['products']")

@@ -153,6 +153,38 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           bi.validate,
                           show_platform_integrity_cmd_output=show_plat.read())
 
+    def test_boot0_hash_not_present(self):
+        show_plat = open(self.path + "/test_files/38_show_plat_int_no_hash.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.MissingInfo,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
+
+    def test_boot_loader_hash_not_present(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_not_present_boot_loader_hash.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.MissingInfo,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
+
+    def test_os_version_not_present(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_not_present_os_version.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.MissingInfo,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
+
+    def test_os_hash_not_present(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_not_present_os_version.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.MissingInfo,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read())
+
     def test_validate(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int.txt", "r")
         kgv = open(self.path + "/test_files/example_kgv.json", "rb")
