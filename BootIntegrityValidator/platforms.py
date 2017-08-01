@@ -17,6 +17,7 @@ class ProductFamily(object):
                  'ISR4221/K9': _ISR4K,
                  'WS-C3650-12X48UQ': _CAT3K,
                  'WS-C3850-12XS': _CAT3K,
+                 'WS-C3850-24XS': _CAT3K,
                  'WS-C3850-24XU': _CAT3K}
 
     @classmethod
