@@ -15,6 +15,7 @@ class ProductFamily(object):
                  'ISR4331/K9': _ISR4K,
                  'ISR4321/K9': _ISR4K,
                  'ISR4221/K9': _ISR4K,
+                 'WS-C3650-48FQM': _CAT3K,
                  'WS-C3650-12X48UQ': _CAT3K,
                  'WS-C3850-12XS': _CAT3K,
                  'WS-C3850-24XS': _CAT3K,
