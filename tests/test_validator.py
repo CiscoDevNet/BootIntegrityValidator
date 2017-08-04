@@ -49,7 +49,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
         bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
         bi._validate_device_cert(cmd_output=show_sudi.read())
 
-    def test_validate_device_cert_invalid_sign_(self):
+    def test_validate_device_cert_invalid_sign_internal_function(self):
         show_sudi = open(self.path + "/test_files/38_show_sudi_sign_bad.txt", "r")
         kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
         kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
@@ -58,6 +58,17 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           bi._validate_device_cert,
                           cmd_output=show_sudi.read())
 
+    def test_validate_device_cert_invalid_sign(self):
+        show_sudi = open(self.path + "/test_files/38_show_sudi_sign_bad.txt", "r")
+        show_plat = open(self.path + "/test_files/38_show_plat_int_no_hash.txt", "r")
+        kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
+        kgv_sig = open(self.path + "/test_files/old_kgv_signed.json.signature", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read(),
+                          show_platform_sudi_certificate_cmd_output=show_sudi.read())
+
     def test_validate_device_cert_valid_sig_nonce(self):
         show_sudi = open(self.path + "/test_files/38_show_sudi_sign_nonce.txt", "r")
         kgv = open(self.path + "/test_files/old_kgv_signed.json", "rb")
@@ -65,21 +76,39 @@ class TestBootIntegrityValidator(unittest.TestCase):
         bi = BootIntegrityValidator(known_good_values=kgv.read(), known_good_values_signature=kgv_sig.read())
         bi._validate_device_cert(cmd_output=show_sudi.read())
 
-    def test_validate_show_platform_integrity_valid_sign(self):
+    def test_validate_device_cert_not_present(self):
+        show_plat_int = open(self.path + "/test_files/cbr8_show_plat_int_sign_not_present.txt", "r")
+        show_plat_cert = open(self.path + "/test_files/cbr8_show_plat_sudi_not_present.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.MissingInfo,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat_int.read(),
+                          show_platform_sudi_certificate_cmd_output=show_plat_cert.read())
+
+    def test_validate_show_platform_integrity_valid_sign_internal_function(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign.txt", "r")
         dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
         dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
         BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature(cmd_output=show_plat.read(),
                                                                                       device_cert_object=dev_cert_obj)
 
-    def test_validate_show_platform_integrity_valid_sign_nonce(self):
+    def test_validate_show_platform_integrity_valid_sign(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign.txt", "r")
+        show_sudi = open(self.path + "/test_files/isr4k_show_plat_sudi_sign_nonce.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        bi.validate(show_platform_integrity_cmd_output=show_plat.read(),
+                    show_platform_sudi_certificate_cmd_output=show_sudi.read())
+
+    def test_validate_show_platform_integrity_valid_sign_nonce_internal_function(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign_nonce.txt", "r")
         dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
         dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
         BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature(cmd_output=show_plat.read(),
                                                                                       device_cert_object=dev_cert_obj)
 
-    def test_validate_show_platform_integrity_invalid_sign(self):
+    def test_validate_show_platform_integrity_invalid_sign_internal_function(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign_bad.txt", "r")
         dev_cert = open(self.path + "/test_files/isr4k_device_cert.txt", "rb")
         dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
@@ -87,6 +116,16 @@ class TestBootIntegrityValidator(unittest.TestCase):
                           BootIntegrityValidator._validate_show_platform_integrity_cmd_output_signature,
                           cmd_output=show_plat.read(),
                           device_cert_object=dev_cert_obj)
+
+    def test_validate_show_platform_integrity_invalid_sign(self):
+        show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign_bad.txt", "r")
+        show_sudi = open(self.path + "/test_files/isr4k_show_plat_sudi_sign_nonce.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.ValidationException,
+                          bi.validate,
+                          show_platform_integrity_cmd_output=show_plat.read(),
+                          show_platform_sudi_certificate_cmd_output=show_sudi.read())
 
     def test_validate_show_platform_integrity_invalid_pcr0(self):
         show_plat = open(self.path + "/test_files/isr4k_show_plat_int_sign_nonce_invalid_pcr0.txt", "r")

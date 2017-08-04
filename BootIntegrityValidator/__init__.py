@@ -239,6 +239,9 @@ class BootIntegrityValidator(object):
         # Extract certs from output
         certs = re.findall(r"((?:-{5}BEGIN\s+CERTIFICATE-{5}).+?(?:-{5}END\s+CERTIFICATE-{5}))", cmd_output, flags=re.DOTALL)
 
+        if not certs:
+            raise BootIntegrityValidator.MissingInfo("0 certificates found in in command output")
+
         # Compare CA against known good CA
         ca_cert_text = certs[0]
         ca_cert_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=ca_cert_text.encode())
@@ -315,6 +318,10 @@ class BootIntegrityValidator(object):
         assert isinstance(device_cert_object, OpenSSL.crypto.X509), "device_cert_object is not an OpenSSL.crypto.X509type: %r" % type(device_cert_object)
 
         sigs = re.search(r"Signature\s+version:\s(\d+).+Signature:.+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
+
+        if not sigs:
+            raise BootIntegrityValidator.MissingInfo("The signature in the 'show platform sudi certificate' command output is not present")
+
         sig_version = sigs.group(1)
         sig_signature = sigs.group(2)
 
@@ -483,6 +490,10 @@ class BootIntegrityValidator(object):
         validate_hash(cli_version=os_version_re.group(1), cli_hash=os_hash_re.group(1), versions=kgv_product['osImageVersions'])
 
         # Successfully validated
+        if "Signature" in cmd_output:
+            self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
+                                                                        device_cert_object=self._cert_obj['device'])
+
         return
 
     @staticmethod
