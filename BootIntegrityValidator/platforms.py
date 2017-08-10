@@ -20,7 +20,8 @@ class ProductFamily(object):
                  'WS-C3650-48FQM': _CAT3K,
                  'WS-C3850-12XS': _CAT3K,
                  'WS-C3850-24XS': _CAT3K,
-                 'WS-C3850-24XU': _CAT3K}
+                 'WS-C3850-24XU': _CAT3K,
+                 'WS-C3850-48XS': _CAT3K}
 
     @classmethod
     def find_product_by_platform(cls, platform):
