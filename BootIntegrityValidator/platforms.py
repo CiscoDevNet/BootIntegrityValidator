@@ -11,6 +11,7 @@ class ProductFamily(object):
                  'ASR1002-X': _ASR1K,
                  'ASR1013': _ASR1K,
                  'ISR4451-X/K9': _ISR4K,
+                 'ISR4431/K9': _ISR4K,
                  'ISR4351/K9': _ISR4K,
                  'ISR4331/K9': _ISR4K,
                  'ISR4321/K9': _ISR4K,
@@ -22,7 +23,8 @@ class ProductFamily(object):
                  'WS-C3650-48FQM': _CAT3K,
                  'WS-C3850-12XS': _CAT3K,
                  'WS-C3850-24XS': _CAT3K,
-                 'WS-C3850-24XU': _CAT3K}
+                 'WS-C3850-24XU': _CAT3K,
+                 'WS-C3850-48XS': _CAT3K}
 
     @classmethod
     def find_product_by_platform(cls, platform):

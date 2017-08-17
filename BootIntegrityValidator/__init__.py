@@ -390,7 +390,7 @@ class BootIntegrityValidator(object):
         if platform_re:
             cli_platform = platform_re.group(1)
         else:
-            raise BootIntegrityValidator.ProductNotFound("Platform not found in cmd_output")
+            raise BootIntegrityValidator.MissingInfo("Platform not found in cmd_output")
 
         try:
             cli_platform_product = platforms.ProductFamily.find_product_by_platform(platform=cli_platform)
@@ -527,6 +527,8 @@ class BootIntegrityValidator(object):
         assert isinstance(device_cert_object, OpenSSL.crypto.X509), "device_cert_object is not an OpenSSL.crypto.X509type: %r" % type(device_cert_object)
 
         sigs = re.search(r"Signature\s+version:\s(\d+).+Signature:.+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
+        if sigs is None:
+            raise BootIntegrityValidator.MissingInfo("Signature not present in cmd_output")
         sig_version = sigs.group(1)
         sig_signature = sigs.group(2)
 
