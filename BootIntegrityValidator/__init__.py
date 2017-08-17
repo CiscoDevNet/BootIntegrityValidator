@@ -491,7 +491,7 @@ class BootIntegrityValidator(object):
 
         # Successfully validated
         if "Signature" in cmd_output:
-            if self._cert_obj:
+            if 'device' in self._cert_obj:
                 self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
                                                                             device_cert_object=self._cert_obj['device'])
             else:
