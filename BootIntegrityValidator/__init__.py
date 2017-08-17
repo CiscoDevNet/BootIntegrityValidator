@@ -491,8 +491,11 @@ class BootIntegrityValidator(object):
 
         # Successfully validated
         if "Signature" in cmd_output:
-            self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
-                                                                        device_cert_object=self._cert_obj['device'])
+            if self._cert_obj:
+                self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
+                                                                            device_cert_object=self._cert_obj['device'])
+            else:
+                raise BootIntegrityValidator.MissingInfo("Signature can't be validated because the SUDI certificates haven't been provided")
 
         return
 
