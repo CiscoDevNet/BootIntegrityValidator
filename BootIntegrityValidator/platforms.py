@@ -22,6 +22,7 @@ class ProductFamily(object):
                  'WS-C3650-24PDM': _CAT3K,
                  'WS-C3650-24TS': _CAT3K,
                  'WS-C3650-48FQM': _CAT3K,
+                 'WS-C3650-48PS': _CAT3K,
                  'WS-C3850-12X48U': _CAT3K,
                  'WS-C3850-12XS': _CAT3K,
                  'WS-C3850-24XS': _CAT3K,
