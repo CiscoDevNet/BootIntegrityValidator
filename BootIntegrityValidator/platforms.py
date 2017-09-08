@@ -9,6 +9,7 @@ class ProductFamily(object):
                  'ASR1001-X': _ASR1K,
                  'ASR1002-HX': _ASR1K,
                  'ASR1002-X': _ASR1K,
+                 'ASR1006-X': _ASR1K,
                  'ASR1013': _ASR1K,
                  'ISR4451-X/K9': _ISR4K,
                  'ISR4431/K9': _ISR4K,
