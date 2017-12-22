@@ -1,3 +1,8 @@
+__author__ = "Jay Young"
+__author_email__ = "jyoungta@cisco.com"
+__copyright__ = "Copyright (c) 2017 Cisco Systems, Inc."
+__license__ = "MIT"
+
 import re
 import OpenSSL
 import base64
