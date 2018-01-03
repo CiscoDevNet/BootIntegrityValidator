@@ -6,4 +6,4 @@ __copyright__ = "Copyright 2017, Cisco Systems, Inc"
 __license__ = "MIT"
 __description__ = "A Python module to validate the Boot Integrity Visibility Output in Cisco Products."
 __all__ = ["BootIntegrityValidator"]
-
+__homepage__ = "https://github.com/CiscoDevNet/BootIntegrityValidator"
