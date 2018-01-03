@@ -15,7 +15,7 @@ exec(open('BootIntegrityValidator/package_meta_data.py').read())
 setup(name=__title__,
       version=__version__,
       description=__description__,
-      long_description=__description__,
+      long_description=__long_description__,
       author=__author__,
       author_email=__author_email__,
       packages=['BootIntegrityValidator'],
