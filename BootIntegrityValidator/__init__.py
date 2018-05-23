@@ -106,6 +106,18 @@ class BootIntegrityValidator(object):
             self._trusted_store.add_cert(cert=act2sudica_obj)
             self._cert_obj['ACT2SUDICA'] = act2sudica_obj
 
+            # Load the Cisco Root 2099 tree
+            crca2099_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crca2099.pem"))
+            hasudi_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/hasudi.pem"))
+
+            # Validate the High Assurance SUDI CA against the root and both to store if passed validation
+            self._trusted_store.add_cert(cert=crca2099_obj)
+            self._cert_obj['crca2099'] = crca2099_obj
+            store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=hasudi_obj)
+            store_ctx.verify_certificate()
+            self._trusted_store.add_cert(cert=hasudi_obj)
+            self._cert_obj['hasudi'] = hasudi_obj
+
             # Load the O=Cisco, CN=Cisco Root CA M2 tree
             crcam2_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crcam2.pem"))
             innerspace_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/innerspace.cer"))
@@ -120,6 +132,7 @@ class BootIntegrityValidator(object):
             store_ctx.verify_certificate()
             self._trusted_store.add_cert(cert=kgv_obj)
             self._cert_obj['Known_Good_Values_PROD'] = kgv_obj
+
         except Exception as e:
             raise BootIntegrityValidator.ValidationException("Validation of Cisco CA certs failed")
 
@@ -238,8 +251,10 @@ class BootIntegrityValidator(object):
 
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
 
-        known_good_cisco_ca = self._cert_obj['crca2048']
-        known_good_cisco_sudi_ca = self._cert_obj['ACT2SUDICA']
+        crca2048 = self._cert_obj['crca2048']
+        act2sudica = self._cert_obj['ACT2SUDICA']
+        crca2099 = self._cert_obj['crca2099']
+        hasudi = self._cert_obj['hasudi']
 
         # Extract certs from output
         certs = re.findall(r"((?:-{5}BEGIN\s+CERTIFICATE-{5}).+?(?:-{5}END\s+CERTIFICATE-{5}))", cmd_output, flags=re.DOTALL)
@@ -247,18 +262,22 @@ class BootIntegrityValidator(object):
         if not certs:
             raise BootIntegrityValidator.MissingInfo("0 certificates found in in command output")
 
-        # Compare CA against known good CA
+        # Compare CA against known good CAs
         ca_cert_text = certs[0]
         ca_cert_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=ca_cert_text.encode())
-        if OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=known_good_cisco_ca) !=\
-                OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=ca_cert_obj):
+
+        def same_cert(a, b):
+            a_bytes = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=a)
+            b_bytes = OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=b)
+            return a_bytes == b_bytes
+
+        if not any([same_cert(x, ca_cert_obj) for x in [crca2048, crca2099]]):
             raise BootIntegrityValidator.ValidationException("Cisco Root CA in cmd_output doesn't match known good Cisco Root CA")
 
         # Compare Sub-CA against known good sub-CA
         cisco_sudi_ca_text = certs[1]
         cisco_sudi_ca_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=cisco_sudi_ca_text.encode())
-        if OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=known_good_cisco_sudi_ca) !=\
-                OpenSSL.crypto.dump_certificate(type=OpenSSL.crypto.FILETYPE_ASN1, cert=cisco_sudi_ca_obj):
+        if not any([same_cert(x, cisco_sudi_ca_obj) for x in [act2sudica, hasudi]]):
             raise BootIntegrityValidator.ValidationException("Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA")
 
         # Device sudi cert
@@ -276,9 +295,9 @@ class BootIntegrityValidator(object):
         # Validate signature if present
         if "Signature" in cmd_output:
             self._validate_show_platform_sudi_output(cmd_output=cmd_output,
-                                                     ca_cert_object=self._cert_obj['crca2048'],
-                                                     sub_ca_cert_object=self._cert_obj['ACT2SUDICA'],
-                                                     device_cert_object=self._cert_obj['device'])
+                                                     ca_cert_object=ca_cert_obj,
+                                                     sub_ca_cert_object=cisco_sudi_ca_obj,
+                                                     device_cert_object=device_sudi_obj)
 
     @staticmethod
     def _validate_show_platform_sudi_output(cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object):

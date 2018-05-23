@@ -230,5 +230,16 @@ class TestBootIntegrityValidator(unittest.TestCase):
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
+    def test_validate_2099(self):
+        show_plat_int = open(self.path + "/test_files/isr1k_show_plat_int_sign_nonce.txt", "r")
+        show_plat_sudi = open(self.path + "/test_files/isr1k_show_plat_sudi_sign_nonce.txt", "r")
+        kgv = open(self.path + "/test_files/example_kgv.json", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        self.assertRaises(BootIntegrityValidator.ProductNotFound,
+                          bi.validate,
+                          show_platform_sudi_certificate_cmd_output=show_plat_sudi.read(),
+                          show_platform_integrity_cmd_output=show_plat_int.read())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
