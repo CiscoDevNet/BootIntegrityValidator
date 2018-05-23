@@ -235,6 +235,7 @@ class TestBootIntegrityValidator(unittest.TestCase):
         show_plat_sudi = open(self.path + "/test_files/isr1k_show_plat_sudi_sign_nonce.txt", "r")
         kgv = open(self.path + "/test_files/example_kgv.json", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
+        # SUDI for new platforms has a different PKI chain.  As long as signature validation doesn't fail this is good
         self.assertRaises(BootIntegrityValidator.ProductNotFound,
                           bi.validate,
                           show_platform_sudi_certificate_cmd_output=show_plat_sudi.read(),
