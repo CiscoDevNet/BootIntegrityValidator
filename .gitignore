@@ -5,3 +5,6 @@ build/
 .pypirc
 dist/
 *.egg-info
+.eggs/
+.pytest_cache/
+.tox/

@@ -1,7 +1,32 @@
+import os
 from setuptools import setup
+from setuptools.command.test import test as TestCommand
+
+
+class PyTest(TestCommand):
+    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = []
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded.
+        import pytest
+        import sys
+        import os
+        os.chdir('tests')
+        errno = pytest.main(['-v','-x'])
+        sys.exit(errno)
+
 
 # Pull the install_requires from the requirement.txt
-with open("requirements.txt") as f:
+with open(os.path.join(os.path.dirname(__file__),'requirements.txt')) as f:
     original_lines = f.readlines()
     requirements = []
     for module in original_lines:
@@ -20,6 +45,8 @@ setup(name=__title__,
       author_email=__author_email__,
       packages=['BootIntegrityValidator'],
       install_requires=requirements,
+      test_requires=['pytest'],
+      cmdclass= {'test': PyTest},
       package_data={'BootIntegrityValidator': ['certs/*.cer', 'certs/*.txt', 'certs/*.pem']},
       classifiers=['Development Status :: 4 - Beta',
                    'Programming Language :: Python :: 2',
