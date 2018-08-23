@@ -1,17 +1,11 @@
+image: alpine
 
-python_2_test:
-  script:
-    - cd tests
-    - python2 test_validator.py
+before_script:
+  - apk add --no-cache python git build-base python3-dev python-dev libxml2-dev libxslt-dev linux-headers
+  - python -m ensurepip
+  - pip install tox
 
-python_2_install:
-  script: python2 setup.py install
-
-python_3_test:
-  script:
-    - cd tests
-    - python3 test_validator.py
+tox:
+    script: "tox"
 
 
-python_3_install:
-  script: python3 setup.py install
