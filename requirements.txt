@@ -1,2 +1,5 @@
 ###### Requirements without Version Specifiers ######
-pytest
+PyOpenSSL
+six
+Pycrypto
+setuptools

@@ -1,4 +1,3 @@
-import os
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
 
@@ -25,13 +24,10 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
-# Pull the install_requires from the requirement.txt
-with open(os.path.join(os.path.dirname(__file__),'requirements.txt')) as f:
-    original_lines = f.readlines()
-    requirements = []
-    for module in original_lines:
-        if not module.startswith("#"):
-            requirements.append(module.strip())
+requirements = ["PyOpenSSL",
+                "six",
+                "Pycrypto",
+                "setuptools"]
 
 # Load the package meta data per #3
 # https://packaging.python.org/single_source_version/#single-sourcing-the-version
