@@ -1,7 +1,7 @@
 image: alpine
 
 before_script:
-  - apk add --no-cache python git build-base python3-dev python-dev libxml2-dev libxslt-dev linux-headers
+  - apk add --no-cache python git build-base python3-dev python-dev libxml2-dev libxslt-dev linux-headers libffi-dev openssl-dev
   - python -m ensurepip
   - pip install tox
 
