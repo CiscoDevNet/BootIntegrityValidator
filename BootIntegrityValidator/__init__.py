@@ -463,6 +463,9 @@ class BootIntegrityValidator(object):
                     raise BootIntegrityValidator.ValidationException('version {} found in versions but hash not found in list of valid hashes'.format(cli_version))
             raise BootIntegrityValidator.VersionNotFound('version {} not found in versions'.format(cli_version))
 
+        # Some of the biv_hashes are truncated
+        acceptable_biv_hash_lengths = (64, 128)
+
         # Got the KGV for this platform
         # Check the boot0Version first
         boot_0_version_re = re.search(pattern=r"Boot 0 Version:[^\S\n]*(.*)\n", string=cmd_output)
@@ -474,6 +477,10 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.MissingInfo("Boot 0 Version not present in cmd_output")
         if not boot_0_hash_re.group(1):
             raise BootIntegrityValidator.MissingInfo("Boot 0 Hash not present in cmd_output")
+        if len(boot_0_hash_re.group(1)) not in acceptable_biv_hash_lengths:
+            raise BootIntegrityValidator.MissingInfo("Boot 0 Hash '{hash}' is of len {length} should be one of {sizes}".format(hash=boot_0_hash_re.group(1),
+                                                                                                                               length=len(boot_0_hash_re.group(1)),
+                                                                                                                               sizes=acceptable_biv_hash_lengths))
 
         if 'boot0Versions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("boot0Version not present in element of known_good_values['products']")
@@ -491,6 +498,10 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.MissingInfo("Boot Loader Version not present in cmd_output")
         if not boot_loader_hash_re.group(1):
             raise BootIntegrityValidator.MissingInfo("Boot Loader Hash not present in cmd_output")
+        if len(boot_loader_hash_re.group(1)) not in acceptable_biv_hash_lengths:
+            raise BootIntegrityValidator.MissingInfo("Boot Loader Hash '{hash}' is of len {length} should be one of {sizes}".format(hash=boot_loader_hash_re.group(1),
+                                                                                                                                    length=len(boot_loader_hash_re.group(1)),
+                                                                                                                                    sizes=acceptable_biv_hash_lengths))
 
         if 'bootLoaderVersions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("bootLoaderVersion not present in element of known_good_values['products']")
@@ -507,6 +518,10 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.MissingInfo("OS Version not present in cmd_output")
         if not os_hash_re.group(1):
             raise BootIntegrityValidator.MissingInfo("OS Hash not present in cmd_output")
+        if len(os_hash_re.group(1)) not in acceptable_biv_hash_lengths:
+            raise BootIntegrityValidator.MissingInfo("OS Hash '{hash}' is of len {length} should be one of {sizes}".format(hash=os_hash_re.group(1),
+                                                                                                                           length=len(os_hash_re.group(1)),
+                                                                                                                           sizes=acceptable_biv_hash_lengths))
 
         if 'osImageVersions' not in kgv_product:
             raise BootIntegrityValidator.InvalidFormat("osImageVersions not present in element of known_good_values['products']")
