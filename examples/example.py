@@ -1,4 +1,9 @@
+import logging
 import BootIntegrityValidator
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #####################################################################################
 #
@@ -29,7 +34,8 @@ kgv_bytes = kgv.read()
 
 # Valid signature
 biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=kgv_bytes,
-                                                    known_good_values_signature=kgv_sig.read())
+                                                    known_good_values_signature=kgv_sig.read(),
+                                                    log_level=logging.DEBUG)
 
 # Invalid signature
 try:
@@ -38,7 +44,7 @@ try:
 except BootIntegrityValidator.BootIntegrityValidator.ValidationException as e:
     print("Bad signature successfully detected")
 
-biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=new_kgv.read())
+biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=new_kgv.read(), log_level=logging.DEBUG)
 
 #####################################################################################
 #

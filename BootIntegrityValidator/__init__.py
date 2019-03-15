@@ -4,6 +4,7 @@ __copyright__ = "Copyright (c) 2017 Cisco Systems, Inc."
 __license__ = "MIT"
 
 import re
+import logging
 import OpenSSL
 import base64
 import struct
@@ -52,16 +53,20 @@ class BootIntegrityValidator(object):
         Like the hash output
         """
 
-    def __init__(self, known_good_values, known_good_values_signature=None, custom_signing_cert=None):
+    def __init__(self, known_good_values, known_good_values_signature=None, custom_signing_cert=None, log_level=logging.ERROR):
         """
         :param known_good_values: bytes - containing JSON that is the KGV
         :param known_good_values_signature: bytes - containing the signature of the file above
-        :param signing_cert: file like object containing the signing_cert
+        :param custom_signing_cert: file like object containing the signing_cert
+        :param log_level: Logging verbosity setting.  Set the level to one of the logging.INFO, DEBUG, ERROR, etc levels
         """
+        assert log_level in (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
+        self._logger = logging.getLogger(__name__)
+        self._logger.setLevel(log_level)
+        self._logger.info("Initializing BootIntegrityValidator object")
 
         assert isinstance(known_good_values, bytes), "known_good_value should be of type bytes, was %r" % type(known_good_values)
         assert known_good_values_signature is None or isinstance(known_good_values_signature, bytes), "known_good_value_signature should be None or bytes, was %r" % type(known_good_values_signature)
-
         # Boot strap Trusted Root and then validate Sub-CAs
 
         self._trusted_store = None
@@ -69,19 +74,27 @@ class BootIntegrityValidator(object):
         self._bootstrap_trusted_cas()
 
         if custom_signing_cert:
+            self._logger.debug("Custom signing cert has been provided.  Not using built-in certs")
             self._validate_custom_cert(custom_cert=custom_signing_cert)
 
         # Validate the known_good_valuescrca2048_obj object if known_good_values_signature provided
         if known_good_values_signature:
+            self._logger.info("Signature file provided.  Attempting to validate the KGV file")
             self._validate_kgv_input_signature(kgv=known_good_values,
                                                kgv_signature=known_good_values_signature,
                                                custom_signing_cert=True if custom_signing_cert else False)
+        else:
+            self._logger.info("No signature file provided.  Skipping KGV file validation")
 
         # Now the known_good_values is validated try to load the json. If successful we are ready
         try:
+            self._logger.info("Loading KGV values")
             self._kgv = json.loads(known_good_values.decode())
         except ValueError as e:
+            self._logger.error("KGV file invalid.  Failed to load the values")
             raise BootIntegrityValidator.InvalidFormat("The known_good_values appears to be invalid JSON")
+
+        self._logger.info("BootIntegrityValidator object successfully initiated")
 
     def _bootstrap_trusted_cas(self):
         """
@@ -92,6 +105,8 @@ class BootIntegrityValidator(object):
         package_name = __name__
         package_cert_path = '/certs'
 
+        self._logger.info("Bootstraping the trusted CA certificates")
+
         try:
             # Load the O=Cisco Systems, CN=Cisco Root CA 2048 tree first
             crca2048_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/crca2048.pem"))
@@ -101,8 +116,10 @@ class BootIntegrityValidator(object):
             self._trusted_store = OpenSSL.crypto.X509Store()
             self._trusted_store.add_cert(cert=crca2048_obj)
             self._cert_obj['crca2048'] = crca2048_obj
+            self._logger.debug("Loaded the CRCA2048 root CA cert")
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=act2sudica_obj)
             store_ctx.verify_certificate()
+            self._logger.debug("Successfully validated the ACT2 SUDI CA cert against the CRCA2048")
             self._trusted_store.add_cert(cert=act2sudica_obj)
             self._cert_obj['ACT2SUDICA'] = act2sudica_obj
 
@@ -113,8 +130,10 @@ class BootIntegrityValidator(object):
             # Validate the High Assurance SUDI CA against the root and both to store if passed validation
             self._trusted_store.add_cert(cert=crca2099_obj)
             self._cert_obj['crca2099'] = crca2099_obj
+            self._logger.debug("Loaded the CRCA2099 Root CA cert")
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=hasudi_obj)
             store_ctx.verify_certificate()
+            self._logger.debug("Successfully validated the HA SUDI CA cert against the CRCA2099")
             self._trusted_store.add_cert(cert=hasudi_obj)
             self._cert_obj['hasudi'] = hasudi_obj
 
@@ -123,18 +142,24 @@ class BootIntegrityValidator(object):
             innerspace_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/innerspace.cer"))
             kgv_obj = self._load_cert_from_stream(pkg_resources.resource_stream(package_name, package_cert_path + "/Known_Good_Values_PROD.pem"))
             self._trusted_store.add_cert(cert=crcam2_obj)
+            self._logger.debug("Loaded the Cisco Root CA M2 tree")
             self._cert_obj['crcam2'] = crcam2_obj
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=innerspace_obj)
             store_ctx.verify_certificate()
+            self._logger.debug("Validated the innerspace CA cert against the Cisco Root CA M2 tree")
             self._trusted_store.add_cert(cert=innerspace_obj)
             self._cert_obj['innerspace'] = innerspace_obj
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=kgv_obj)
             store_ctx.verify_certificate()
+            self._logger.debug("Validated the KGV signing cert against the innerspace CA")
             self._trusted_store.add_cert(cert=kgv_obj)
             self._cert_obj['Known_Good_Values_PROD'] = kgv_obj
 
         except Exception as e:
+            self._logger.error("Validation/loading of the Cisco CA certs failed")
             raise BootIntegrityValidator.ValidationException("Validation of Cisco CA certs failed")
+
+        self._logger.info("Bootstrapping the trusted CA certs complete")
 
     def _validate_custom_cert(self, custom_cert):
         """
@@ -143,14 +168,17 @@ class BootIntegrityValidator(object):
         :return: None
         :raises: ValidationException if the custom_cert isn't signed by Cisco CAs
         """
+        self._logger.info("Validating the custom signing cert")
         custom_cert_obj = self._load_cert_from_stream(custom_cert)
         store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=custom_cert_obj)
         try:
             store_ctx.verify_certificate()
         except OpenSSL.crypto.X509StoreContextError as e:
+            self._logger.error("Validation of custom signing cert failed")
             raise BootIntegrityValidator.ValidationException("Custom signing cert failed to validate against the Cisco CAs")
         self._trusted_store.add_cert(cert=custom_cert_obj)
         self._cert_obj['custom'] = custom_cert_obj
+        self._logger.info("Custom signing cert validation successful")
 
     def _validate_kgv_input_signature(self, kgv, kgv_signature, custom_signing_cert):
         """
@@ -160,17 +188,24 @@ class BootIntegrityValidator(object):
         :return: None
         :raises:
         """
+        self._logger.info("Validating KGV signature")
         signing_cert = self._cert_obj['custom'] if custom_signing_cert else self._cert_obj['Known_Good_Values_PROD']
         try:
             if len(kgv_signature) == 512:
+                self._logger.debug("KGV signature uses SHA512")
                 OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha512")
             elif len(kgv_signature) == 256:
+                self._logger.debug("KGV signature uses SHA256")
                 OpenSSL.crypto.verify(cert=signing_cert, signature=kgv_signature, data=kgv, digest="sha256")
             else:
+                self._logger.error("KGV signature is invalid format")
                 raise BootIntegrityValidator.InvalidFormat("The kgv_signature seems to be invalid, should be either a sha-2-256 or sha-2-512")
         except OpenSSL.crypto.Error as e:
+            self._logger.error("KGV signature validation failed")
             raise BootIntegrityValidator.ValidationException(
                 "The known_good_values failed signature failed signature validation")
+
+        self._logger.info("KGV signature valid")
 
     @staticmethod
     def _load_cert_from_stream(f):
@@ -208,6 +243,7 @@ class BootIntegrityValidator(object):
         :raises: VersionNotFound - Software version not found in KGV
         """
 
+        self._logger.info("Starting BIV validation")
         assert isinstance(show_platform_integrity_cmd_output, six.string_types), "show_platform_integrity_cmd_output should be a string type was %r" % type(show_platform_integrity_cmd_output)
         assert show_platform_sudi_certificate_cmd_output is None or \
                isinstance(show_platform_sudi_certificate_cmd_output, six.string_types), "show_platform_sudi_certificate_cmd_output should be a string type was %r" % type(show_platform_sudi_certificate_cmd_output)
@@ -215,8 +251,12 @@ class BootIntegrityValidator(object):
         if show_platform_sudi_certificate_cmd_output:
             # Validate the device certificate and signature on cli output if present
             self._validate_device_cert(cmd_output=show_platform_sudi_certificate_cmd_output)
+        else:
+            self._logger.info("'show platform certificate' command output not provided.  Skipping validation of the signature")
 
         self._validate_show_platform_integrity_cmd_output(cmd_output=show_platform_integrity_cmd_output)
+        self._logger.info("BIV validation complete")
+
 
     def _validate_device_cert(self, cmd_output):
         """
@@ -249,6 +289,7 @@ class BootIntegrityValidator(object):
         :return:
         """
 
+        self._logger.info("Processing the 'show platform sudi certificate' output")
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
 
         crca2048 = self._cert_obj['crca2048']
@@ -260,6 +301,7 @@ class BootIntegrityValidator(object):
         certs = re.findall(r"((?:-{5}BEGIN\s+CERTIFICATE-{5}).+?(?:-{5}END\s+CERTIFICATE-{5}))", cmd_output, flags=re.DOTALL)
 
         if not certs:
+            self._logger.error("0 certificates found in the command output")
             raise BootIntegrityValidator.MissingInfo("0 certificates found in in command output")
 
         # Compare CA against known good CAs
@@ -272,12 +314,14 @@ class BootIntegrityValidator(object):
             return a_bytes == b_bytes
 
         if not any([same_cert(x, ca_cert_obj) for x in [crca2048, crca2099]]):
+            self._logger.error("Cisco Root CA in cmd_output doesn't match a known good Cisco Root CA")
             raise BootIntegrityValidator.ValidationException("Cisco Root CA in cmd_output doesn't match known good Cisco Root CA")
 
         # Compare Sub-CA against known good sub-CA
         cisco_sudi_ca_text = certs[1]
         cisco_sudi_ca_obj = OpenSSL.crypto.load_certificate(type=OpenSSL.crypto.FILETYPE_PEM, buffer=cisco_sudi_ca_text.encode())
         if not any([same_cert(x, cisco_sudi_ca_obj) for x in [act2sudica, hasudi]]):
+            self._logger.error("Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA")
             raise BootIntegrityValidator.ValidationException("Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA")
 
         # Device sudi cert
@@ -286,18 +330,27 @@ class BootIntegrityValidator(object):
 
         # validate Device ID Certificate
         try:
+            self._logger.info("Validating device certificate against Cisco CAs")
             store_ctx = OpenSSL.crypto.X509StoreContext(store=self._trusted_store, certificate=device_sudi_obj)
             store_ctx.verify_certificate()
             self._cert_obj['device'] = device_sudi_obj
         except OpenSSL.crypto.X509StoreContextError as e:
+            self._logger.error("Device ID Certificate failed validation against Cisco CA Roots")
             raise BootIntegrityValidator.ValidationException("Device ID Certificate failed validation against Cisco CA Roots")
 
+        self._logger.info("Device ID certificate successfully validated")
         # Validate signature if present
         if "Signature" in cmd_output:
+            self._logger.info("Signature of output present.  Attempt to validate")
             self._validate_show_platform_sudi_output(cmd_output=cmd_output,
                                                      ca_cert_object=ca_cert_obj,
                                                      sub_ca_cert_object=cisco_sudi_ca_obj,
                                                      device_cert_object=device_sudi_obj)
+            self._logger.info("Signature of output valid.")
+        else:
+            self._logger.info("Signature of the 'show platform sudi certificate' command not present, skipping validation")
+
+        self._logger.info("Processing the 'show platform sudi certificate' output complete")
 
     @staticmethod
     def _validate_show_platform_sudi_output(cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object):
@@ -408,33 +461,43 @@ class BootIntegrityValidator(object):
         A InvalidFormat if the kgv dict is invalid
         """
 
+        self._logger.info("Start validating the 'show platform integrity' command output")
         assert isinstance(cmd_output, six.string_types), "cmd_output is not an string type: %r" % type(cmd_output)
 
         platform_re = re.search(r"Platform:\s+(\S+)", cmd_output)
         if platform_re:
             cli_platform = platform_re.group(1)
+            self._logger.debug("Platform is %s", cli_platform)
         else:
+            self._logger.error("Unable to extract the Platform type from the output")
             raise BootIntegrityValidator.MissingInfo("Platform not found in cmd_output")
 
         try:
             cli_platform_product = platforms.ProductFamily.find_product_by_platform(platform=cli_platform)
+            self._logger.debug("Platform %s mapped to %s", cli_platform, cli_platform_product)
         except ValueError as e:
+            self._logger.error("Unable to map platform %s to a 'product'", cli_platform)
             raise BootIntegrityValidator.ProductNotFound("Mapping for platform {} to products unavailable".format(cli_platform))
 
         if 'products' not in self._kgv or not isinstance(self._kgv['products'], list):
+            self._logger.error("Unexpected KGV data structure found")
             raise BootIntegrityValidator.InvalidFormat("Structure of known_good_values provided in initializer is invalid")
 
         kgv_products = self._kgv['products']
         kgv_product = None
         for product in kgv_products:
             if not isinstance(product, dict):
+                self._logger.error("Unexpected KGV data structure found")
                 raise BootIntegrityValidator.InvalidFormat("element of known_good_value['products'] provided in initializer is not a dict: %r" % type(product))
             if product['product'] == cli_platform_product:
                 kgv_product = product
                 break
 
         if not kgv_product:
+            self._logger.error("Product %s not found the KGV data set", cli_platform_product)
             raise BootIntegrityValidator.ProductNotFound("Product '{}' not found in known_good_values".format(cli_platform_product))
+        else:
+            self._logger.info("Product %s succesfully located in KGV data set", cli_platform_product)
 
         def validate_hash(cli_version, cli_hash, versions):
             """
@@ -471,6 +534,7 @@ class BootIntegrityValidator(object):
         boot_0_version_re = re.search(pattern=r"Boot 0 Version:[^\S\n]*(.*)\n", string=cmd_output)
         boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:[^\S\n]*(.*)\n", string=cmd_output)
 
+        self._logger.info("Attempting to extract Boot 0 Version and Hash")
         if boot_0_hash_re is None or boot_0_version_re is None:
             raise BootIntegrityValidator.MissingInfo("'Boot 0 Version' or 'Boot 0 Hash' not found in cmd_output")
         if not boot_0_version_re.group(1):
@@ -487,11 +551,13 @@ class BootIntegrityValidator(object):
 
         # Validate boot0Versions
         validate_hash(cli_version=boot_0_version_re.group(1), cli_hash=boot_0_hash_re.group(1), versions=kgv_product['boot0Versions'])
+        self._logger.info("Boot 0 validation successful")
 
         # Check the bootLoader second
         boot_loader_version_re = re.search(pattern=r"Boot Loader Version:[^\S\n]*(.*)\n", string=cmd_output)
         boot_loader_hash_re = re.search(pattern=r"Boot Loader Hash:[^\S\n]*(.*)\n", string=cmd_output)
 
+        self._logger.info("Attempting to extract Boot Loader Version and Hash")
         if boot_loader_hash_re is None or boot_loader_version_re is None:
             raise BootIntegrityValidator.MissingInfo("'Boot Loader Version' or 'Boot Loader Hash' not found in cmd_output")
         if not boot_loader_version_re.group(1):
@@ -507,11 +573,12 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.InvalidFormat("bootLoaderVersion not present in element of known_good_values['products']")
 
         validate_hash(cli_version=boot_loader_version_re.group(1), cli_hash=boot_loader_hash_re.group(1), versions=kgv_product['bootLoaderVersions'])
-
+        self._logger.info("Boot Loader validation successful")
         # Check the OS third
         os_version_re = re.search(pattern=r"OS Version:[^\S\n]*(.*)\n", string=cmd_output)
         os_hash_re = re.search(pattern=r"OS Hash:[^\S\n]*(.*)\n", string=cmd_output)
 
+        self._logger.info("Attempt to extract OS Version and Hash")
         if os_hash_re is None or os_version_re is None:
             raise BootIntegrityValidator.MissingInfo("'OS Version' or 'OS Hash' not found in cmd_output")
         if not os_version_re.group(1):
@@ -527,15 +594,25 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.InvalidFormat("osImageVersions not present in element of known_good_values['products']")
 
         validate_hash(cli_version=os_version_re.group(1), cli_hash=os_hash_re.group(1), versions=kgv_product['osImageVersions'])
-
+        self._logger.info("OS validation successful")
         # Successfully validated
+
         if "Signature" in cmd_output:
             if 'device' in self._cert_obj:
-                self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
-                                                                            device_cert_object=self._cert_obj['device'])
+                self._logger.info("'show platform integrity' command has signature.  Attempt to validate")
+                try:
+                    self._validate_show_platform_integrity_cmd_output_signature(cmd_output=cmd_output,
+                                                                                device_cert_object=self._cert_obj['device'])
+                except BootIntegrityValidator.ValidationException as e:
+                    self._logger.error("Validation failed", exc_info=True)
+                    raise
+
+                self._logger.info("Validation succeeded")
             else:
+                self._logger.error("Can't validate the 'show platform integrity' command signature as the 'show platform sudi certificate' command wasn't provided")
                 raise BootIntegrityValidator.MissingInfo("Signature can't be validated because the SUDI certificates haven't been provided")
 
+        self._logger.info("Finished validating the 'show platform integrity' command output")
         return
 
     @staticmethod
