@@ -22,9 +22,23 @@ import BootIntegrityValidator
 
 kgv = open("example_kgv.json", "rb")
 kgv_sig = open("example_kgv.json.signature", "rb")
-biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=kgv.read(),
+kgv_bad_sig = open("example_kgv.json.bad_signature", "rb")
+new_kgv = open("example_kgv_updated_unsigned.json", "rb")
+
+kgv_bytes = kgv.read()
+
+# Valid signature
+biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=kgv_bytes,
                                                     known_good_values_signature=kgv_sig.read())
 
+# Invalid signature
+try:
+    biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=kgv_bytes,
+                                                        known_good_values_signature=kgv_bad_sig.read())
+except BootIntegrityValidator.BootIntegrityValidator.ValidationException as e:
+    print("Bad signature successfully detected")
+
+biv = BootIntegrityValidator.BootIntegrityValidator(known_good_values=new_kgv.read())
 
 #####################################################################################
 #
@@ -48,7 +62,8 @@ spi = show_plat_int.read()
 #####################################################################################
 
 try:
-    biv.validate(show_platform_integrity_cmd_output=suid)
+    biv.validate(show_platform_sudi_certificate_cmd_output=suid,
+                 show_platform_integrity_cmd_output=spi)
     print("Successfully validated!")
 
 except BootIntegrityValidator.BootIntegrityValidator.InvalidFormat:
