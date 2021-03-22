@@ -8,3 +8,5 @@ dist/
 .eggs/
 .pytest_cache/
 .tox/
+.vscode/
+.python-version

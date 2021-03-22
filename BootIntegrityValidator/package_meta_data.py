@@ -1,8 +1,8 @@
 __title__ = "BootIntegrityValidator"
-__version__ = "0.3.1"
+__version__ = "1.0.0"
 __author__ = "Jay Young"
 __author_email__ = "jyoungta@cisco.com"
-__copyright__ = "Copyright 2017, Cisco Systems, Inc"
+__copyright__ = "Copyright 2021, Cisco Systems, Inc"
 __license__ = "MIT"
 __description__ = "A Python module to validate the Boot Integrity Visibility Output in Cisco Products."
 __all__ = ["BootIntegrityValidator"]
