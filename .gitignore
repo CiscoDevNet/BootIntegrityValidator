@@ -10,3 +10,4 @@ dist/
 .tox/
 .vscode/
 .python-version
+tests/test_files/example_kgv.json

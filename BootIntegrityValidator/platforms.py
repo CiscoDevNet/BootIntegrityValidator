@@ -9,8 +9,10 @@ class ProductFamily(object):
     _ISR4300 = ("ISR4300", "isr4300")
     _ISR4200 = ("ISR4200", "isr4200")
     _ASR1K = ("ASR1000", "asr1000")
-    _CAT3650 = "C3650"
-    _CAT3850 = "C3850"
+    _CAT3650 = ("C3650",)
+    _CAT3850 = ("C3850",)
+    _CAT9K = ("cat9k",)
+    _CAT9KLITE = ("cat9k_lite",)
 
     _products = {
         "ASR1001-HX": (*_ASR1K,),
@@ -26,30 +28,34 @@ class ProductFamily(object):
         "ISR4331/K9": (*_ISR4300,),
         "ISR4321/K9": (*_ISR4300,),
         "ISR4221/K9": (*_ISR4200,),
-        "WS-C3650-8X24PD": (_CAT3650,),
-        "WS-C3650-8X24UQ": (_CAT3650,),
-        "WS-C3650-12X48UQ": (_CAT3650,),
-        "WS-C3650-12X48UR": (_CAT3650,),
-        "WS-C3650-12X48UZ": (_CAT3650,),
-        "WS-C3650-24PD": (_CAT3650,),
-        "WS-C3650-24PDM": (_CAT3650,),
-        "WS-C3650-24PS": (_CAT3650,),
-        "WS-C3650-24TD": (_CAT3650,),
-        "WS-C3650-24TS": (_CAT3650,),
-        "WS-C3650-48FQM": (_CAT3650,),
-        "WS-C3650-48PD": (_CAT3650,),
-        "WS-C3650-48PQ": (_CAT3650,),
-        "WS-C3650-48PS": (_CAT3650,),
-        "WS-C3650-48TD": (_CAT3650,),
-        "WS-C3650-48TQ": (_CAT3650,),
-        "WS-C3650-48TS": (_CAT3650,),
-        "WS-C3850-12S": (_CAT3850,),
-        "WS-C3850-12X48U": (_CAT3850,),
-        "WS-C3850-12XS": (_CAT3850,),
-        "WS-C3850-24S": (_CAT3850,),
-        "WS-C3850-24XS": (_CAT3850,),
-        "WS-C3850-24XU": (_CAT3850,),
-        "WS-C3850-48XS": (_CAT3850,),
+        "WS-C3650-8X24PD": (*_CAT3650,),
+        "WS-C3650-8X24UQ": (*_CAT3650,),
+        "WS-C3650-12X48UQ": (*_CAT3650,),
+        "WS-C3650-12X48UR": (*_CAT3650,),
+        "WS-C3650-12X48UZ": (*_CAT3650,),
+        "WS-C3650-24PD": (*_CAT3650,),
+        "WS-C3650-24PDM": (*_CAT3650,),
+        "WS-C3650-24PS": (*_CAT3650,),
+        "WS-C3650-24TD": (*_CAT3650,),
+        "WS-C3650-24TS": (*_CAT3650,),
+        "WS-C3650-48FQM": (*_CAT3650,),
+        "WS-C3650-48PD": (*_CAT3650,),
+        "WS-C3650-48PQ": (*_CAT3650,),
+        "WS-C3650-48PS": (*_CAT3650,),
+        "WS-C3650-48TD": (*_CAT3650,),
+        "WS-C3650-48TQ": (*_CAT3650,),
+        "WS-C3650-48TS": (*_CAT3650,),
+        "WS-C3850-12S": (*_CAT3850,),
+        "WS-C3850-12X48U": (*_CAT3850,),
+        "WS-C3850-12XS": (*_CAT3850,),
+        "WS-C3850-24S": (*_CAT3850,),
+        "WS-C3850-24XS": (*_CAT3850,),
+        "WS-C3850-24XU": (*_CAT3850,),
+        "WS-C3850-48XS": (*_CAT3850,),
+        "C9200-48P": (*_CAT9K,),
+        "C9200L-48P-4X": (*_CAT9KLITE,),
+        "C9300-48UXM": (*_CAT9K,),
+        "C9300L-48P-4G": (*_CAT9K,),
     }
 
     @classmethod
