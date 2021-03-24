@@ -656,17 +656,6 @@ class BootIntegrityValidator(object):
             self._logger.error("Unable to extract the Platform type from the output")
             raise BootIntegrityValidator.MissingInfo("Platform not found in cmd_output")
 
-        try:
-            cli_platforms = platforms.ProductFamily.find_product_by_platform(
-                platform=cli_platform
-            )
-            self._logger.debug("Platform %s mapped to %s", cli_platform, cli_platforms)
-        except ValueError as e:
-            self._logger.error("Unable to map platform %s to a 'product'", cli_platform)
-            raise BootIntegrityValidator.ProductNotFound(
-                f"Mapping for platform {cli_platform} to products unavailable"
-            )
-
         def kgvs_for_dtype(dtype):
             if "bulkHash" not in self._kgv or not isinstance(
                 self._kgv["bulkHash"], list

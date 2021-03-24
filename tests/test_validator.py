@@ -186,15 +186,6 @@ class TestBootIntegrityValidator(object):
         with pytest.raises(BootIntegrityValidator.MissingInfo):
             bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
-    def test_validate_invalid_platform(self):
-        show_plat = open(
-            self.path + "/test_files/isr4k_show_plat_int_bad_platform.txt", "r"
-        )
-        kgv = gzip.open(self.path + "/test_files/example_kgv.json.gzip", "rb")
-        bi = BootIntegrityValidator(known_good_values=kgv.read())
-        with pytest.raises(BootIntegrityValidator.ProductNotFound):
-            bi.validate(show_platform_integrity_cmd_output=show_plat.read())
-
     def test_boot_0_version_invalid(self):
         show_plat = open(
             self.path + "/test_files/isr4k_show_plat_int_bad_boot_0_version.txt", "r"
@@ -267,7 +258,7 @@ class TestBootIntegrityValidator(object):
         kgv = gzip.open(self.path + "/test_files/example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         # SUDI for new platforms has a different PKI chain.  As long as signature validation doesn't fail this is good
-        with pytest.raises(BootIntegrityValidator.ProductNotFound):
+        with pytest.raises(BootIntegrityValidator.ValidationException):
             bi.validate(
                 show_platform_sudi_certificate_cmd_output=show_plat_sudi.read(),
                 show_platform_integrity_cmd_output=show_plat_int.read(),
