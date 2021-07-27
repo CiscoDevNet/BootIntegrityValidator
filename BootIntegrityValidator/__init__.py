@@ -10,11 +10,10 @@ import base64
 import struct
 import json
 import pkg_resources
+import typing
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA256
-
-from . import platforms
 
 
 class BootIntegrityValidator(object):
@@ -697,6 +696,44 @@ class BootIntegrityValidator(object):
                 f"version with biv_hash {cli_hash} not found in list of valid hashes"
             )
 
+        def validate_all_os_hashes(os_hashes: typing.Tuple[str, str]):
+            kgvs = kgvs_for_dtype(dtype="osimage")
+            first_filename, first_hash = os_hashes[0]
+            if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
+                # This is a mono image.  We can reduce the set down to a small set of pkgs
+                parent_kgv = None
+                for kgv in kgvs:
+                    if kgv["filename"] == first_filename:
+                        parent_kgv = kgv
+                        break
+
+                if not parent_kgv:
+                    raise BootIntegrityValidator.ValidationException(
+                        f"version with biv_hash {first_hash} not found in list of valid hashes"
+                    )
+
+                pkg_kgvs = {
+                    kgv["filename"]: kgv.get("biv_hash") for kgv in parent_kgv["pkg"]
+                }
+            else:
+                # Have to get ALL osimage and ALL sub packages into a single dictionary
+                pkg_kgvs = {}
+                for kgv in kgvs:
+                    pkg_kgvs[kgv['filename']] = kgv.get('biv_hash')
+                    for pkg_kgv in kgv.get('pkg', []):
+                        pkg_kgvs[pkg_kgv['filename']] = pkg_kgv.get('biv_hash')
+
+            for given_pkg_filename, given_pkg_hash in os_hashes[1:]:
+                if given_pkg_filename not in pkg_kgvs:
+                    raise BootIntegrityValidator.ValidationException(
+                        f"package {given_pkg_filename} not found in list of valid hashes"
+                    )
+                if pkg_kgvs[given_pkg_filename] != given_pkg_hash:
+                    raise BootIntegrityValidator.ValidationException(
+                        f"version {given_pkg_filename} with biv_hash {given_pkg_hash} doesn't match Known good value of {pkg_kgvs[given_pkg_filename]}"
+                    )
+            
+
         # Some of the biv_hashes are truncated
         acceptable_biv_hash_lengths = (64, 128)
 
@@ -775,41 +812,42 @@ class BootIntegrityValidator(object):
             kgvs=kgvs_for_dtype(dtype="blr"),
         )
         self._logger.info("Boot Loader validation successful")
-        # Check the OS third
+
+        # Check the OS third but there might be 1 or many hashes
+        self._logger.info("Attempt to extract OS Version and Hash")
         os_version_re = re.search(
             pattern=r"OS Version:[^\S\n]*(.*)\n", string=cmd_output
         )
-        os_hash_re = re.search(pattern=r"OS Hash:[^\S\n]*(.*)\n", string=cmd_output)
+        if not os_version_re or not os_version_re.group(1):
+            raise BootIntegrityValidator.MissingInfo(
+                "'OS Version' not found in cmd_output"
+            )
 
-        self._logger.info("Attempt to extract OS Version and Hash")
-        if os_hash_re is None or os_version_re is None:
+        try:
+            os_hashes = BootIntegrityValidator._extract_os_hashes(cmd_output=cmd_output)
+        except ValueError:
             raise BootIntegrityValidator.MissingInfo(
-                "'OS Version' or 'OS Hash' not found in cmd_output"
+                "'OS Hash' or 'OS Hashes' not found in cmd_output"
             )
-        if not os_version_re.group(1):
-            raise BootIntegrityValidator.MissingInfo(
-                "OS Version not present in cmd_output"
-            )
-        if not os_hash_re.group(1):
-            raise BootIntegrityValidator.MissingInfo(
-                "OS Hash not present in cmd_output"
-            )
-        if len(os_hash_re.group(1)) not in acceptable_biv_hash_lengths:
-            raise BootIntegrityValidator.MissingInfo(
-                "OS Hash '{hash}' is of len {length} should be one of {sizes}".format(
-                    hash=os_hash_re.group(1),
-                    length=len(os_hash_re.group(1)),
-                    sizes=acceptable_biv_hash_lengths,
+
+        for filename, hash in os_hashes:
+            if len(hash) not in acceptable_biv_hash_lengths:
+                raise BootIntegrityValidator.MissingInfo(
+                    f"OS Hash '{filename}' '{hash}' is of len {len(hash)} should be one of {acceptable_biv_hash_lengths}"
                 )
-            )
 
-        validate_hash(
-            cli_version=os_version_re.group(1),
-            cli_hash=os_hash_re.group(1),
-            kgvs=kgvs_for_dtype(dtype="osimage"),
-        )
-        self._logger.info("OS validation successful")
-        # Successfully validated
+        if len(os_hashes) == 1:
+            # Single OS hash
+            validate_hash(
+                cli_version=os_version_re.group(1),
+                cli_hash=os_hashes[0][1],
+                kgvs=kgvs_for_dtype(dtype="osimage"),
+            )
+            self._logger.info("OS validation successful")
+            # Successfully validated
+        else:
+            # Multi hash to validate
+            validate_all_os_hashes(os_hashes=os_hashes)
 
         if "Signature" in cmd_output:
             if "device" in self._cert_obj:
@@ -837,6 +875,60 @@ class BootIntegrityValidator(object):
         self._logger.info(
             "Finished validating the 'show platform integrity' command output"
         )
+
+    @staticmethod
+    def _extract_os_hashes(cmd_output: str) -> typing.Tuple[str, str]:
+        """
+        The OS hash output could be a single hash OR it could be a list of hashes
+
+        # Example single hash
+        OS Version: 16.03.01
+        OS Hash: 4DDCC4A43F791......98963181813AD810E32EC30936BEC1BA0DA26AE5AE2
+        PCR0: 2D42A273E4C475B8D53A42A667599549ABE6028EC062EF15DEB15A12B41B0EA9
+
+        # Example multiple hashes
+        OS Version: 17.04.01a
+        OS Hashes:
+        isr4400-universalk9.17.04.01a.SPA.bin: A5A505D87DD43534A7B3F30D7158D4AACE7B787105265288A4C62E44EFAFD9246C4A644104BE70C648492AEC4F415EBD988B0DE64ED7210058835E042AC1393F
+        isr4400-mono-universalk9.17.04.01a.SPA.pkg: E27B520E9373613AC5F8FEEFBC7FF42B426EA3F87367D8F293D0122B93CFB01D19F33434D3B0F8906D8FB6C978F1CC4A2894C864795E35EFB325ED4C5EC8D8BD
+        isr4400-firmware_nim_shdsl.17.04.01a.SPA.pkg: F4BCFA451A95C9EE7F2B8585C23FAD57E90CD01E72C03D3711EE821255A03E64894D64A2AFD2580FF64B65806709D371410F5C08C39732706EE172183AEDDF33
+        ....        
+        """
+
+        single_os_hash_re = re.search(
+            pattern=r"OS Hash:[^\S\n]*(.*)\n", string=cmd_output
+        )
+        if single_os_hash_re:
+            return (("single_hash", single_os_hash_re.group(1)),)
+
+        multi_os_hash_re = re.search(
+            pattern=r"OS Hashes:\s*\n((?:.|\n)*)PCR0:", string=cmd_output
+        )
+        if multi_os_hash_re:
+            # Check for all hashes
+            # For Example
+            # OS Version: 17.04.01a
+            # OS Hashes:
+            # isr4400-universalk9.17.04.01a.SPA.bin: A5A505D87DD43534A7B3F30D7158D4AACE7B787105265288A4C62E44EFAFD9246C4A644104BE70C648492AEC4F415EBD988B0DE64ED7210058835E042AC1393F
+            # isr4400-mono-universalk9.17.04.01a.SPA.pkg: E27B520E9373613AC5F8FEEFBC7FF42B426EA3F87367D8F293D0122B93CFB01D19F33434D3B0F8906D8FB6C978F1CC4A2894C864795E35EFB325ED4C5EC8D8BD
+            # isr4400-firmware_nim_shdsl.17.04.01a.SPA.pkg: F4BCFA451A95C9EE7F2B8585C23FAD57E90CD01E72C03D3711EE821255A03E64894D64A2AFD2580FF64B65806709D371410F5C08C39732706EE172183AEDDF33
+            os_hashes = []
+            os_hashes_text_re = re.search(
+                pattern=r"OS Hashes:\s*\n((?:.|\n)*)PCR0:", string=cmd_output
+            )
+            os_hashes_text = os_hashes_text_re.group(1).splitlines()
+            for hash_line in os_hashes_text:
+                hash_re = re.search(
+                    pattern=r"^(?P<filename>\S+)\:\s*(?P<hash>[0-9A-F]+)\s*$",
+                    string=hash_line,
+                )
+                if hash_re:
+                    os_hashes.append(
+                        (hash_re.groupdict()["filename"], hash_re.groupdict()["hash"])
+                    )
+            return tuple(os_hashes)
+
+        raise ValueError("Unable to find the OS hashes in cmd_output")
 
     @staticmethod
     def _validate_show_platform_integrity_cmd_output_signature(
@@ -958,19 +1050,14 @@ class BootIntegrityValidator(object):
             )
 
         # PCR8 Calculation
-        os_hash_bytes_re = re.search(pattern=r"OS Hash:\s+(\S+)", string=cmd_output)
-        if not os_hash_bytes_re:
-            raise BootIntegrityValidator.InvalidFormat(
-                "OS Hash not found in cmd_output"
-            )
+        os_hashes = BootIntegrityValidator._extract_os_hashes(cmd_output=cmd_output)
+        pcr8_computed = b"\x00" * 32
+        for _, hash in os_hashes:
+            os_hash_bytes = SHA256.new(base64.b16decode(hash)).digest()
+            pcr8_computed = SHA256.new(pcr8_computed + os_hash_bytes).digest()
 
-        os_hash_bytes = base64.b16decode(os_hash_bytes_re.group(1))
-        os_measurement_hash = SHA256.new(os_hash_bytes).digest()
-        init = b"\x00" * 32
-        pcr8_computed = SHA256.new(init + os_measurement_hash).digest()
         pcr8_computed_text = base64.b16encode(pcr8_computed).decode()
-
         if pcr8_computed_text != pcr8_received_text:
             raise BootIntegrityValidator.ValidationException(
-                "The received PCR8 was signed correctly but doesn't match the computed PRC0 using the given measurements."
+                "The received PCR8 was signed correctly but doesn't match the computed PRC8 using the given measurements."
             )

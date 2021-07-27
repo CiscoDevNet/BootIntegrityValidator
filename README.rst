@@ -6,3 +6,7 @@ Then the Boot 0, Boot Loader and OS integrity values will be checked against a d
 This database of KGV will also be cryptographically validated that it was provided by Cisco.
 
 This allows an administrator to validate the runtime state of the device and confirm that it is currently running genuine Cisco software.
+
+Change Log:
+Version 1.5 (July 2021)
+- Added support for multiple OS Hashes.  This is to support package.conf boot rather than single binary boot
