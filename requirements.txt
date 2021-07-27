@@ -1,4 +1,5 @@
 ###### Requirements without Version Specifiers ######
-PyOpenSSL
-Pycrypto
+PyOpenSSL==20.0.1
+Pycrypto==2.6.1
+cffi==1.14.6
 setuptools
