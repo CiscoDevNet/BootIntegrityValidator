@@ -719,9 +719,9 @@ class BootIntegrityValidator(object):
                 # Have to get ALL osimage and ALL sub packages into a single dictionary
                 pkg_kgvs = {}
                 for kgv in kgvs:
-                    pkg_kgvs[kgv['filename']] = kgv.get('biv_hash')
-                    for pkg_kgv in kgv.get('pkg', []):
-                        pkg_kgvs[pkg_kgv['filename']] = pkg_kgv.get('biv_hash')
+                    pkg_kgvs[kgv["filename"]] = kgv.get("biv_hash")
+                    for pkg_kgv in kgv.get("pkg", []):
+                        pkg_kgvs[pkg_kgv["filename"]] = pkg_kgv.get("biv_hash")
 
             for given_pkg_filename, given_pkg_hash in os_hashes[1:]:
                 if given_pkg_filename not in pkg_kgvs:
@@ -732,7 +732,6 @@ class BootIntegrityValidator(object):
                     raise BootIntegrityValidator.ValidationException(
                         f"version {given_pkg_filename} with biv_hash {given_pkg_hash} doesn't match Known good value of {pkg_kgvs[given_pkg_filename]}"
                     )
-            
 
         # Some of the biv_hashes are truncated
         acceptable_biv_hash_lengths = (64, 128)

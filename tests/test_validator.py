@@ -1,11 +1,7 @@
-import os
-import sys
 import pytest
 import gzip
 import pathlib
 
-sys.path.insert(0, os.path.abspath(".."))
-sys.path.insert(0, os.path.abspath("."))
 from BootIntegrityValidator import BootIntegrityValidator
 
 
@@ -91,8 +87,12 @@ class TestBootIntegrityValidator(object):
         bi._validate_device_cert(cmd_output=show_sudi.read())
 
     def test_validate_device_cert_not_present(self):
-        show_plat_int = open(self.test_files / "cbr8_show_plat_int_sign_not_present.txt", "r")
-        show_plat_cert = open(self.test_files / "cbr8_show_plat_sudi_not_present.txt", "r")
+        show_plat_int = open(
+            self.test_files / "cbr8_show_plat_int_sign_not_present.txt", "r"
+        )
+        show_plat_cert = open(
+            self.test_files / "cbr8_show_plat_sudi_not_present.txt", "r"
+        )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         with pytest.raises(BootIntegrityValidator.MissingInfo):
@@ -166,7 +166,9 @@ class TestBootIntegrityValidator(object):
             bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
     def test_boot_0_version_invalid(self):
-        show_plat = open(self.test_files / "isr4k_show_plat_int_bad_boot_0_version.txt", "r")
+        show_plat = open(
+            self.test_files / "isr4k_show_plat_int_bad_boot_0_version.txt", "r"
+        )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         with pytest.raises(BootIntegrityValidator.ValidationException):
@@ -182,7 +184,9 @@ class TestBootIntegrityValidator(object):
             bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
     def test_os_version_invalid(self):
-        show_plat = open(self.test_files / "isr4k_show_plat_int_bad_os_version.txt", "r")
+        show_plat = open(
+            self.test_files / "isr4k_show_plat_int_bad_os_version.txt", "r"
+        )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         with pytest.raises(BootIntegrityValidator.ValidationException):
@@ -196,7 +200,8 @@ class TestBootIntegrityValidator(object):
             bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
     def test_boot_loader_hash_not_present(self):
-        show_plat = open(self.test_files / "isr4k_show_plat_int_not_present_boot_loader_hash.txt",
+        show_plat = open(
+            self.test_files / "isr4k_show_plat_int_not_present_boot_loader_hash.txt",
             "r",
         )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
@@ -220,8 +225,12 @@ class TestBootIntegrityValidator(object):
         bi.validate(show_platform_integrity_cmd_output=show_plat.read())
 
     def test_validate_2099(self):
-        show_plat_int = open(self.test_files / "isr1k_show_plat_int_sign_nonce.txt", "r")
-        show_plat_sudi = open(self.test_files / "isr1k_show_plat_sudi_sign_nonce.txt", "r")
+        show_plat_int = open(
+            self.test_files / "isr1k_show_plat_int_sign_nonce.txt", "r"
+        )
+        show_plat_sudi = open(
+            self.test_files / "isr1k_show_plat_sudi_sign_nonce.txt", "r"
+        )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         # SUDI for new platforms has a different PKI chain.  As long as signature validation doesn't fail this is good
@@ -233,7 +242,9 @@ class TestBootIntegrityValidator(object):
 
     def test_validate_show_plat_int_multi_hashes(self):
         show_plat_cert = open(self.test_files / "isr4k_show_plat_sudi_cert.txt", "r")
-        show_plat_int = open(self.test_files / "isr4k_show_plat_int_multi_hashes.txt", "r")
+        show_plat_int = open(
+            self.test_files / "isr4k_show_plat_int_multi_hashes.txt", "r"
+        )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb",)
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         bi.validate(
