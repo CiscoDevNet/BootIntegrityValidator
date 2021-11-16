@@ -1,9 +1,25 @@
-name: GitHub Actions Demo
-on: [push]
+name: Python Package
+
+on:
+  - push
+  - pull_request
+
 jobs:
   Run-Tox:
-    runs-on: themattrix/tox
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-versions: [3.6, 3.7, 3.8]
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-      - run: tox
+      - name: Setup python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ marix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python install tox tox-gh-actions
+      - name: Test with tox
+        run: tox
