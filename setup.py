@@ -17,7 +17,6 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
     test_requires=["pytest"],
-    cmdclass={"test": PyTest},
     package_data={
         "BootIntegrityValidator": ["certs/*.cer", "certs/*.txt", "certs/*.pem"]
     },
