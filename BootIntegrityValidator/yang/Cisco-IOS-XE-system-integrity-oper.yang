@@ -1,0 +1,330 @@
+module Cisco-IOS-XE-system-integrity-oper {
+  yang-version 1;
+  namespace "http://cisco.com/ns/yang/Cisco-IOS-XE-system-integrity-oper";
+  prefix system-integrity-ios-xe-oper;
+
+  import Cisco-IOS-XE-common-types {
+    prefix common-types-ios-xe;
+  }
+  import cisco-semver {
+    prefix cisco-semver;
+  }
+
+  organization
+    "Cisco Systems, Inc.";
+  contact
+    "Cisco Systems, Inc.
+     Customer Service
+
+     Postal: 170 W Tasman Drive
+     San Jose, CA 95134
+
+     Tel: +1 1800 553-NETS
+
+     E-mail: cs-yang@cisco.com";
+  description
+    "This module contains a collection of YANG definitions
+     for system integrity operational data.
+     Copyright (c) 2020 by Cisco Systems, Inc.
+     All rights reserved.";
+
+  revision 2021-07-01 {
+    description
+      "Initial revision";
+    reference
+      "1.0.0";
+    cisco-semver:module-version "1.0.0";
+  }
+
+  typedef choice-integrity {
+    type enumeration {
+      enum choice-measurement {
+        value 0;
+        description
+          "Enumerated value used to denote the integrity
+           measurement choice.";
+      }
+      enum choice-trust-chain {
+        value 1;
+        description
+          "Enumerated value used to denote the integrity trust
+           chain choice.";
+      }
+    }
+    description
+      "Enumeration used to select between measurements and
+       trust chain.";
+  }
+
+  grouping boot-loader-group {
+    description
+      "Group of aggregate attributes describing a boot loader stage";
+    leaf stage {
+      type uint8;
+      description
+        "Indexes this stage of boot loader sequence";
+    }
+    leaf version {
+      type string;
+      description
+        "Version of the current boot loader stage";
+    }
+    leaf hash {
+      type string;
+      description
+        "Hash signature of current boot loader stage";
+    }
+  }
+
+  grouping package-group {
+    description
+      "Group to aggregate attributes describing a
+       package";
+    leaf index {
+      type uint16;
+      description
+        "List position identifier";
+    }
+    leaf name {
+      type string;
+      description
+        "Package Name";
+    }
+    leaf hash {
+      type string;
+      description
+        "Package Hash";
+    }
+  }
+
+  grouping operating-system-group {
+    description
+      "Group to aggregate attributes describing
+       operating system packages";
+    leaf version {
+      type string;
+      description
+        "Version of operating system packages";
+    }
+    list package-integrity {
+      description
+        "List of package integrity group describing
+         system-calculated hashes for each package artifact
+         currently installed or patched to the system.  A package
+         artifact in this context may consist of at least one super
+         package followed by a sequence of sub-packages and optionally
+         where applicable may contain additional entries for software
+         maintenance update packages.";
+      uses system-integrity-ios-xe-oper:package-group;
+    }
+  }
+
+  grouping pcr-register-group {
+    description
+      "Describes a pcr register entry";
+    leaf index {
+      type uint8;
+      description
+        "Pcr register identifier.";
+    }
+    leaf pcr-content {
+      type string;
+      description
+        "Current state of the pcr register.";
+    }
+  }
+
+  grouping signature-group {
+    description
+      "Group of attributes that describe a payload signature
+       consisting of both a signature and the signature
+       version.";
+    leaf signature {
+      type string;
+      mandatory true;
+      description
+        "System ACT2 Signature primed by the
+         nonce keyed input and signed over the state of an
+         information group since last TAM reset.";
+    }
+    leaf version {
+      type uint32;
+      mandatory true;
+      description
+        "PCR Quote Signature Version.";
+    }
+  }
+
+  grouping measurement-group {
+    description
+      "Integrity Measurements.";
+    leaf platform {
+      type string;
+      description
+        "Product Identifier";
+    }
+    list boot-loader {
+      description
+        "List of boot loader group entries describing
+         system calculated hashes for each boot loader stage.
+         May consist of one or more entries depending on the
+         platform.";
+      uses system-integrity-ios-xe-oper:boot-loader-group;
+    }
+    container operating-system {
+      description
+        "Aggregates the attributes that describe operating
+         system and platform functionality currently installed
+         on the system.";
+      uses system-integrity-ios-xe-oper:operating-system-group;
+    }
+    list register {
+      description
+        "List for maintaining the Platform Content
+         Register (PCR) indices and content.  Currently
+         only two entries are expected: index 0 and
+         index 8";
+      uses system-integrity-ios-xe-oper:pcr-register-group;
+    }
+    container signature {
+      description
+        "Signature representing round trip attack protection over
+         the state of the integrity group, obtained directly from
+         tam device and derived from the nonce input";
+      uses system-integrity-ios-xe-oper:signature-group;
+    }
+  }
+
+  grouping integrity-compliance-group {
+    description
+      "This group element describes those aspects of the integrity
+       output are verifiable. This can vary by product platform
+       type";
+    leaf category {
+      type string;
+      description
+        "This field is a value rendered as a
+         java script object notation string that encodes a
+         description of the integrity support for this element";
+    }
+  }
+
+  grouping certificate-group {
+    description
+      "This group elements describes an element of the chain of trust";
+    leaf name {
+      type string;
+      description
+        "Name of the certificate.";
+    }
+    leaf value {
+      type string;
+      description
+        "Certificate measurement value.";
+    }
+  }
+
+  grouping trust-chain-group {
+    description
+      "Content consisting of the trust chain list and a valid signature
+       obtained from the trust anchor.";
+    list trust-chain {
+      description
+        "The list of certificates that constitute the chain
+         of trust.";
+      uses system-integrity-ios-xe-oper:certificate-group;
+    }
+    container signature {
+      description
+        "Signature representing round trip attack protection over
+         the state of the trust chain group, obtained directly from
+         tam device, signed over the content of the certificate list,
+         as well as the nonce value.";
+      uses system-integrity-ios-xe-oper:signature-group;
+    }
+  }
+
+  grouping integrity-oper-data-key {
+    description
+      "Compound key aggregates a mandatory nonce input value
+       with the choice to retrieve the measurement or the trust chain.";
+    leaf nonce {
+      type string;
+      description
+        "Signing input to used in conjunction with signature on the response
+         to verify that the response has not been tampered with.  In this context
+         the nonce is key value that is a manufactured input
+         provided by the end user.";
+    }
+    leaf request {
+      type system-integrity-ios-xe-oper:choice-integrity;
+      description
+        "Enumerated input used to indicate the type of response required";
+    }
+  }
+
+  grouping integrity-oper-data-group {
+    description
+      "Top level grouping of integrity oper data";
+    choice response-choice {
+      description
+        "Indicates the kind of response provided.";
+      case choice-measurement {
+        container measurement {
+          description
+            "Component of integrity measurements for functioning
+             elements that support Secure Boot.  These
+             measurements include two or more stages of Boot
+             Loader( the zero'th element in the list typically
+             denotes the micro loader ), and one super-package
+             measurement immediately followed by one or more
+             sub-package measurements.
+             The current state of the system is captured as
+             Platform Configuration Register (PCR) content.";
+          uses system-integrity-ios-xe-oper:measurement-group;
+        }
+      }
+      case choice-trust-chain {
+        container trust-chain {
+          description
+            "Component of system certificates for functioning elements
+             that support Secure Boot.  The component certificate
+             list consists of Cisco Root CA (CRCA) certificate,
+             Cisco Manufacturing CA (CMCA) certificate, and
+             ACT2 RSA Secure Unique Device Identity (SUDI) CA
+             PEM certificates and SUDI generated signatures.";
+          uses system-integrity-ios-xe-oper:trust-chain-group;
+        }
+      }
+    }
+  }
+
+  container system-integrity-oper-data {
+    config false;
+    description
+      "Aggregates system integrity operational data from all
+       system integrity capable elements in this platform";
+    list location {
+      key "fru slot bay chassis node";
+      description
+        "A list of data provider locations";
+      uses common-types-ios-xe:extended-location;
+      list integrity {
+        key "nonce request";
+        description
+          "Top level integrity container.";
+        uses system-integrity-ios-xe-oper:integrity-oper-data-key;
+        uses system-integrity-ios-xe-oper:integrity-oper-data-group;
+      }
+      container compliance {
+        presence "compliance";
+        description
+          "Integrity compliance statement for a given location.
+           Sets forth the integrity support expectation for a
+           location element.  The content of this field may vary
+           according to platform type and location.";
+        uses system-integrity-ios-xe-oper:integrity-compliance-group;
+      }
+    }
+  }
+}
