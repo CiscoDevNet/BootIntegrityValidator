@@ -18,7 +18,12 @@ setup(
     install_requires=requirements,
     test_requires=["pytest"],
     package_data={
-        "BootIntegrityValidator": ["certs/*.cer", "certs/*.txt", "certs/*.pem"]
+        "BootIntegrityValidator": [
+            "certs/*.cer",
+            "certs/*.txt",
+            "certs/*.pem",
+            "yang/*.yang",
+        ]
     },
     classifiers=[
         "Development Status :: 4 - Beta",
