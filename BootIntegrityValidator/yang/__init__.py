@@ -155,7 +155,6 @@ def validate_json_measurement(json_measurement: dict) -> dict:
             args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_json.name],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            check=True,
         )
         if run.stderr or run.returncode:
             # yanglint for some reason returns with an exit code of 0 on mac even in model validation failure
