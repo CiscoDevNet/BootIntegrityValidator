@@ -43,7 +43,9 @@ def validate_yang_models(files: typing.List[pathlib.Path]) -> None:
     """
     file_paths = [str(f.absolute()) for f in files]
     try:
-        run = subprocess.run([YANGLINT_CMD, *file_paths], capture_output=True)
+        run = subprocess.run(
+            [YANGLINT_CMD, *file_paths], stderr=subprocess.PIPE, stdout=subprocess.PIPE
+        )
         if run.returncode:
             raise InvalidYangModel(
                 f"""
@@ -99,7 +101,8 @@ def validate_xml_measurement(xml_measurement: str) -> dict:
         try:
             run = subprocess.run(
                 args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_xml.name],
-                capture_output=True,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
                 check=True,
             )
             if run.stderr:
@@ -153,7 +156,8 @@ def validate_json_measurement(json_measurement: dict) -> dict:
         try:
             run = subprocess.run(
                 args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_json.name],
-                capture_output=True,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
                 check=True,
             )
             if run.stderr:
