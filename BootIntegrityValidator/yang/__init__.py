@@ -98,17 +98,16 @@ def validate_xml_measurement(xml_measurement: str) -> dict:
         tmp_file_for_xml.write(xml_measurement)
         tmp_file_for_xml.seek(0)
         model_paths = [str(f.absolute()) for f in model_path.glob("*.yang")]
-        try:
-            run = subprocess.run(
-                args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_xml.name],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                check=True,
-            )
-            if run.stderr:
-                # yanglint for some reason returns with an exit code of 0 even in model validation failure
-                raise InvalidYangDataInstance(
-                    f"""
+
+        run = subprocess.run(
+            args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_xml.name],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        if run.stderr or run.returncode:
+            # yanglint for some reason returns with an exit code of 0 on mac even in model validation failure
+            raise InvalidYangDataInstance(
+                f"""
 The data instance failed validation against the data model with the following error messages:
 
 ------ START OF STDOUT
@@ -125,11 +124,9 @@ If the error message is referring to "fru", "bay", "slot", "chassis", "node" bei
 make sure that it has been included in the NETCONF "get" request.
 
 """
-                )
+            )
 
-            return json.loads(run.stdout)
-        except Exception as e:
-            raise
+        return json.loads(run.stdout)
 
 
 def validate_json_measurement(json_measurement: dict) -> dict:
@@ -153,17 +150,17 @@ def validate_json_measurement(json_measurement: dict) -> dict:
         tmp_file_for_json.write(json.dumps(json_measurement))
         tmp_file_for_json.seek(0)
         model_paths = [str(f.absolute()) for f in model_path.glob("*.yang")]
-        try:
-            run = subprocess.run(
-                args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_json.name],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                check=True,
-            )
-            if run.stderr:
-                # yanglint for some reason returns with an exit code of 0 even in model validation failure
-                raise InvalidYangDataInstance(
-                    f"""
+
+        run = subprocess.run(
+            args=[YANGLINT_CMD, "-f", "json", *model_paths, tmp_file_for_json.name],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            check=True,
+        )
+        if run.stderr or run.returncode:
+            # yanglint for some reason returns with an exit code of 0 on mac even in model validation failure
+            raise InvalidYangDataInstance(
+                f"""
 The data instance failed validation against the data model with the following error messages:
 
 ------ START OF STDOUT
@@ -180,8 +177,6 @@ If the error message is referring to "fru", "bay", "slot", "chassis", "node" bei
 make sure that it has been included in the NETCONF "get" request.
 
 """
-                )
+            )
 
-            return json.loads(run.stdout)
-        except Exception as e:
-            raise
+        return json.loads(run.stdout)
