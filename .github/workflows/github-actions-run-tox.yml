@@ -18,7 +18,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install non-python dependencies
-        run: sudo apt install -y yangtools
+        run: |
+          sudo apt update
+          sudo apt install -y yang-tools
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
