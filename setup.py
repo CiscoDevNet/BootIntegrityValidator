@@ -1,28 +1,4 @@
-from setuptools import setup
-from setuptools.command.test import test as TestCommand
-
-
-class PyTest(TestCommand):
-    user_options = [("pytest-args=", "a", "Arguments to pass to py.test")]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = []
-
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        # import here, cause outside the eggs aren't loaded.
-        import pytest
-        import sys
-        import os
-
-        os.chdir("tests")
-        errno = pytest.main(["-v", "-x"])
-        sys.exit(errno)
+from setuptools import setup, find_packages
 
 
 requirements = ["pyOpenSSL ==20.0.1", "Pycrypto ==2.6.1", "cffi ==1.14.6", "setuptools"]
@@ -38,7 +14,7 @@ setup(
     long_description=__long_description__,
     author=__author__,
     author_email=__author_email__,
-    packages=["BootIntegrityValidator"],
+    packages=find_packages(),
     install_requires=requirements,
     test_requires=["pytest"],
     cmdclass={"test": PyTest},
