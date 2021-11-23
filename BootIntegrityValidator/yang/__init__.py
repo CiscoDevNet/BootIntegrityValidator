@@ -179,3 +179,7 @@ make sure that it has been included in the NETCONF "get" request.
             )
 
         return json.loads(run.stdout)
+
+
+def convert_cli_output_to_json(cli_output: str) -> dict:
+    pass

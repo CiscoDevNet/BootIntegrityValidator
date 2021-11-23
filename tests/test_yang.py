@@ -37,7 +37,7 @@ def test_validate_invalid_yang_models(tmp_path):
 
 def test_validate_valid_xml_measurement():
     valid_xml_measurement = open(
-        TEST_FILES_DIR / "netconf_valid_measurement.xml"
+        TEST_FILES_DIR / "v2" / "netconf_valid_measurement.xml"
     ).read()
     BootIntegrityValidator.yang.validate_xml_measurement(
         xml_measurement=valid_xml_measurement
@@ -50,7 +50,7 @@ def test_validate_invalid_xml_measurement():
     for in the netconf `get` request.
     """
     invalid_xml_measurement = open(
-        TEST_FILES_DIR / "netconf_invalid_measurement_no_list_key.xml"
+        TEST_FILES_DIR / "v2" / "netconf_invalid_measurement_no_list_key.xml"
     ).read()
     with pytest.raises(BootIntegrityValidator.yang.InvalidYangDataInstance):
         BootIntegrityValidator.yang.validate_xml_measurement(
@@ -60,7 +60,7 @@ def test_validate_invalid_xml_measurement():
 
 def test_validate_valid_json_measurement():
     valid_json_measurement = json.load(
-        open(TEST_FILES_DIR / "restconf_valid_measurement.json")
+        open(TEST_FILES_DIR / "v2" / "restconf_valid_measurement.json")
     )
     BootIntegrityValidator.yang.validate_json_measurement(
         json_measurement=valid_json_measurement
@@ -73,7 +73,7 @@ def test_validate_invalid_json_measurement():
     for in the netconf `get` request.
     """
     invalid_json_measurement = json.load(
-        open(TEST_FILES_DIR / "restconf_invalid_measurement_no_list_key.json")
+        open(TEST_FILES_DIR / "v2" / "restconf_invalid_measurement_no_list_key.json")
     )
     with pytest.raises(BootIntegrityValidator.yang.InvalidYangDataInstance):
         BootIntegrityValidator.yang.validate_json_measurement(
