@@ -1,6 +1,6 @@
 Switch#show system integrity switch active R0 trust_chain nonce 1234
 ---------------------------------
-LOCATION FRU=BINOS_FRU_RP SLOT=0 BAY=0 CHASSIS=1 NODE=0
+LOCATION FRU=fru-rp SLOT=0 BAY=0 CHASSIS=1 NODE=0
 ---------------------------------
   Certificate Name: CRCA CERTIFICATE
   -----BEGIN CERTIFICATE-----
