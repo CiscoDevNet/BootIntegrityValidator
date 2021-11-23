@@ -1,0 +1,26 @@
+{
+  "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data": {
+    "location": [
+      {
+        "fru": "fru-rp",
+        "slot": 0,
+        "bay": 0,
+        "chassis": 1,
+        "node": 0,
+        "compliance": {
+          "category": "{\"capabilities\":{\"secure_boot\":true,\"hwver_bootmeasure\":false,\"ldwm_envelope\":false,\"num_btlstage\":2,\"bivlen\":64,\"register_disabled\":[{\"pcr0\":false},{\"pcr8\":false}]}}"
+        }
+      },
+      {
+        "fru": "fru-rp",
+        "slot": 0,
+        "bay": 0,
+        "chassis": 2,
+        "node": 0,
+        "compliance": {
+          "category": "{\"capabilities\":{\"secure_boot\":true,\"hwver_bootmeasure\":false,\"ldwm_envelope\":false,\"num_btlstage\":2,\"bivlen\":64,\"register_disabled\":[{\"pcr0\":false},{\"pcr8\":false}]}}"
+        }
+      }
+    ]
+  }
+}

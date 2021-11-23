@@ -31,7 +31,8 @@ class TestBootIntegrityValidator(object):
     def test_invalid_device_cert(self):
         show_plat = open(self.test_files / "isr4k_show_plat_int.txt", "r")
         show_sudi = open(
-            self.test_files / "isr4k_show_plat_sudi_sign_invalid_dev_cert.txt", "r",
+            self.test_files / "isr4k_show_plat_sudi_sign_invalid_dev_cert.txt",
+            "r",
         )
         kgv = open(self.test_files / "old_kgv_signed.json", "rb")
         kgv_sig = open(self.test_files / "old_kgv_signed.json.signature", "rb")
@@ -149,7 +150,8 @@ class TestBootIntegrityValidator(object):
 
     def test_validate_show_platform_integrity_invalid_pcr0(self):
         show_plat = open(
-            self.test_files / "isr4k_show_plat_int_sign_nonce_invalid_pcr0.txt", "r",
+            self.test_files / "isr4k_show_plat_int_sign_nonce_invalid_pcr0.txt",
+            "r",
         )
         dev_cert = open(self.test_files / "isr4k_device_cert.txt", "rb")
         dev_cert_obj = BootIntegrityValidator._load_cert_from_stream(f=dev_cert)
@@ -176,7 +178,8 @@ class TestBootIntegrityValidator(object):
 
     def test_boot_loader_version_invalid(self):
         show_plat = open(
-            self.test_files / "isr4k_show_plat_int_bad_boot_loader_version.txt", "r",
+            self.test_files / "isr4k_show_plat_int_bad_boot_loader_version.txt",
+            "r",
         )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
@@ -211,7 +214,8 @@ class TestBootIntegrityValidator(object):
 
     def test_os_version_not_present(self):
         show_plat = open(
-            self.test_files / "isr4k_show_plat_int_not_present_os_version.txt", "r",
+            self.test_files / "isr4k_show_plat_int_not_present_os_version.txt",
+            "r",
         )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
@@ -245,7 +249,10 @@ class TestBootIntegrityValidator(object):
         show_plat_int = open(
             self.test_files / "isr4k_show_plat_int_multi_hashes.txt", "r"
         )
-        kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb",)
+        kgv = gzip.open(
+            self.test_files / "example_kgv.json.gzip",
+            "rb",
+        )
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         bi.validate(
             show_platform_sudi_certificate_cmd_output=show_plat_cert.read(),
@@ -257,10 +264,61 @@ class TestBootIntegrityValidator(object):
         show_plat_int = open(
             self.test_files / "isr4k_show_plat_int_multi_bad_hashes.txt", "r"
         )
-        kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb",)
+        kgv = gzip.open(
+            self.test_files / "example_kgv.json.gzip",
+            "rb",
+        )
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         with pytest.raises(BootIntegrityValidator.ValidationException):
             bi.validate(
                 show_platform_sudi_certificate_cmd_output=show_plat_cert.read(),
                 show_platform_integrity_cmd_output=show_plat_int.read(),
+            )
+
+    def test_validate_v2_cli(self):
+        kgv = gzip.open(
+            self.test_files / "example_kgv.json.gzip",
+            "rb",
+        )
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+
+        trust_chain_cli = open(
+            self.test_files / "v2" / "cli_valid_trust_chain.txt"
+        ).read()
+        compliance_cli = open(
+            self.test_files / "v2" / "cli_valid_compliance.txt"
+        ).read()
+        measurement_cli = open(
+            self.test_files / "v2" / "cli_valid_multiple_measure.txt"
+        ).read()
+
+        with pytest.raises(NotImplementedError):
+            bi.validate_v2_cli(
+                show_system_integrity_switch_trust_chain_cmd_output=trust_chain_cli,
+                show_system_integrity_all_compliance_cmd_output=compliance_cli,
+                show_system_integrity_switch_measurement_cmd_output=measurement_cli,
+            )
+
+    def test_validate_v2_xml(self):
+        kgv = gzip.open(
+            self.test_files / "example_kgv.json.gzip",
+            "rb",
+        )
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+
+        trust_chain_xml = open(
+            self.test_files / "v2" / "netconf_valid_trust_chain.xml"
+        ).read()
+        compliance_xml = open(
+            self.test_files / "v2" / "netconf_valid_compliance.xml"
+        ).read()
+        measurement_xml = open(
+            self.test_files / "v2" / "netconf_valid_multiple_locations.xml"
+        ).read()
+
+        with pytest.raises(NotImplementedError):
+            bi.validate_v2_xml(
+                show_system_integrity_switch_trust_chain_xml=trust_chain_xml,
+                show_system_integrity_all_compliance_xml=compliance_xml,
+                show_system_integrity_switch_measurement_xml=measurement_xml,
             )

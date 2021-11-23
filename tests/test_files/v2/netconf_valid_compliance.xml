@@ -1,0 +1,22 @@
+<system-integrity-oper-data xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-system-integrity-oper">
+  <location>
+    <fru>fru-rp</fru>
+    <slot>0</slot>
+    <bay>0</bay>
+    <chassis>1</chassis>
+    <node>0</node>
+    <compliance>
+      <category>{"capabilities":{"secure_boot":true,"hwver_bootmeasure":false,"ldwm_envelope":false,"num_btlstage":2,"bivlen":64,"register_disabled":[{"pcr0":false},{"pcr8":false}]}}</category>
+    </compliance>
+  </location>
+  <location>
+    <fru>fru-rp</fru>
+    <slot>0</slot>
+    <bay>0</bay>
+    <chassis>2</chassis>
+    <node>0</node>
+    <compliance>
+      <category>{"capabilities":{"secure_boot":true,"hwver_bootmeasure":false,"ldwm_envelope":false,"num_btlstage":2,"bivlen":64,"register_disabled":[{"pcr0":false},{"pcr8":false}]}}</category>
+    </compliance>
+  </location>
+</system-integrity-oper-data>

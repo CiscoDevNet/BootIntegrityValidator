@@ -76,9 +76,8 @@ class BootIntegrityValidator(object):
         ), f"known_good_value should be of type bytes, was {type(known_good_values)!r}"
         assert known_good_values_signature is None or isinstance(
             known_good_values_signature, bytes
-        ), (
-            "known_good_value_signature should be None or bytes, was %r"
-            % type(known_good_values_signature)
+        ), "known_good_value_signature should be None or bytes, was %r" % type(
+            known_good_values_signature
         )
         # Boot strap Trusted Root and then validate Sub-CAs
 
@@ -342,9 +341,10 @@ class BootIntegrityValidator(object):
         """
 
         self._logger.info("Starting BIV validation")
-        assert isinstance(show_platform_integrity_cmd_output, str), (
-            "show_platform_integrity_cmd_output should be a string type was %r"
-            % type(show_platform_integrity_cmd_output)
+        assert isinstance(
+            show_platform_integrity_cmd_output, str
+        ), "show_platform_integrity_cmd_output should be a string type was %r" % type(
+            show_platform_integrity_cmd_output
         )
         assert show_platform_sudi_certificate_cmd_output is None or isinstance(
             show_platform_sudi_certificate_cmd_output, str
@@ -545,13 +545,15 @@ class BootIntegrityValidator(object):
         assert isinstance(
             ca_cert_object, OpenSSL.crypto.X509
         ), f"ca_cert_object is not an OpenSSL.crypto.X509type: {type(ca_cert_object)!r}"
-        assert isinstance(sub_ca_cert_object, OpenSSL.crypto.X509), (
-            "sub_ca_cert_object is not an OpenSSL.crypto.X509type: %r"
-            % type(sub_ca_cert_object)
+        assert isinstance(
+            sub_ca_cert_object, OpenSSL.crypto.X509
+        ), "sub_ca_cert_object is not an OpenSSL.crypto.X509type: %r" % type(
+            sub_ca_cert_object
         )
-        assert isinstance(device_cert_object, OpenSSL.crypto.X509), (
-            "device_cert_object is not an OpenSSL.crypto.X509type: %r"
-            % type(device_cert_object)
+        assert isinstance(
+            device_cert_object, OpenSSL.crypto.X509
+        ), "device_cert_object is not an OpenSSL.crypto.X509type: %r" % type(
+            device_cert_object
         )
 
         sigs = re.search(
@@ -891,7 +893,7 @@ class BootIntegrityValidator(object):
         isr4400-universalk9.17.04.01a.SPA.bin: A5A505D87DD43534A7B3F30D7158D4AACE7B787105265288A4C62E44EFAFD9246C4A644104BE70C648492AEC4F415EBD988B0DE64ED7210058835E042AC1393F
         isr4400-mono-universalk9.17.04.01a.SPA.pkg: E27B520E9373613AC5F8FEEFBC7FF42B426EA3F87367D8F293D0122B93CFB01D19F33434D3B0F8906D8FB6C978F1CC4A2894C864795E35EFB325ED4C5EC8D8BD
         isr4400-firmware_nim_shdsl.17.04.01a.SPA.pkg: F4BCFA451A95C9EE7F2B8585C23FAD57E90CD01E72C03D3711EE821255A03E64894D64A2AFD2580FF64B65806709D371410F5C08C39732706EE172183AEDDF33
-        ....        
+        ....
         """
 
         single_os_hash_re = re.search(
@@ -961,9 +963,10 @@ class BootIntegrityValidator(object):
         assert isinstance(
             cmd_output, str
         ), f"cmd_output is not an string type: {type(cmd_output)!r}"
-        assert isinstance(device_cert_object, OpenSSL.crypto.X509), (
-            "device_cert_object is not an OpenSSL.crypto.X509type: %r"
-            % type(device_cert_object)
+        assert isinstance(
+            device_cert_object, OpenSSL.crypto.X509
+        ), "device_cert_object is not an OpenSSL.crypto.X509type: %r" % type(
+            device_cert_object
         )
 
         sigs = re.search(
@@ -1060,3 +1063,143 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.ValidationException(
                 "The received PCR8 was signed correctly but doesn't match the computed PRC8 using the given measurements."
             )
+
+    def validate_v2_cli(
+        self,
+        show_system_integrity_switch_trust_chain_cmd_output: str,
+        show_system_integrity_all_compliance_cmd_output: str,
+        show_system_integrity_switch_measurement_cmd_output: str,
+    ) -> None:
+        """
+        Takes the cli output of
+            - `show system integrity switch active <SLOT> trust_chain nonce <INT>`
+            - `show system integrity all compliance nonce <INT>`
+            - `show system integrity switch active <SLOT> measurement nonce <INT>`
+
+        Does the following:
+            - Transforms each cli output in a valid JSON data structure that matches the YANG model
+            - Then calls the `validate_v2_json` function
+            - Validates the Certificate Chain for the SUDI certificate
+            - Validates each of the CLI outputs against the signatures given
+            - Validates the measurements against the Known-Good-Values (KGV)
+
+        """
+
+        self._logger.info("Starting BIV v2 validation - CLI")
+        if not isinstance(show_system_integrity_switch_trust_chain_cmd_output, str):
+            raise TypeError(
+                f"'show_system_integrity_switch_trust_chain_cmd_output' should be a str type but is {type(show_system_integrity_switch_trust_chain_cmd_output)}"
+            )
+        if not isinstance(show_system_integrity_all_compliance_cmd_output, str):
+            raise TypeError(
+                f"'show_system_integrity_all_compliance_cmd_output' should be a str type but is {type(show_system_integrity_all_compliance_cmd_output)}"
+            )
+        if not isinstance(show_system_integrity_switch_measurement_cmd_output, str):
+            raise TypeError(
+                f"show_system_integrity_switch_measurement_cmd_output should be a str type but is {type(show_system_integrity_switch_measurement_cmd_output)}"
+            )
+
+        from . import yang
+
+        # Convert the cli into the json data instance
+        trust_chain_json = (
+            yang.parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
+                cmd_output=show_system_integrity_switch_trust_chain_cmd_output
+            )
+        )
+        compliance_json = yang.parse_show_system_integrity_all_compliance_nonce(
+            cmd_output=show_system_integrity_all_compliance_cmd_output
+        )
+        measurement_json = (
+            yang.parse_show_system_integrity_switch_active_r0_measurement_nonce(
+                cmd_output=show_system_integrity_switch_measurement_cmd_output
+            )
+        )
+
+        # Now the data has been normalized to a json data instance of the YANG model
+        # Call the validate function
+        self.validate_v2_json(
+            show_system_integrity_switch_trust_chain_json=trust_chain_json,
+            show_system_integrity_all_compliance_json=compliance_json,
+            show_system_integrity_switch_measurement_json=measurement_json,
+        )
+
+    def validate_v2_xml(
+        self,
+        show_system_integrity_switch_trust_chain_xml: str,
+        show_system_integrity_all_compliance_xml: str,
+        show_system_integrity_switch_measurement_xml: str,
+    ) -> None:
+        """
+        Takes the xml data model for the Cisco-IOS-XE-system-integrity-oper:system-integrity-ios-xe-oper yang models
+
+        Does the following:
+            - Validates the data instances against the yang model
+            - Transforms the xml data instances int json data instances
+            - Calls the `validate_v2_json` method
+        """
+        self._logger.info("Starting BIV v2 validation - XML")
+        if not isinstance(show_system_integrity_switch_trust_chain_xml, str):
+            raise TypeError(
+                f"'show_system_integrity_switch_trust_chain_xml' should be a str type but is {type(show_system_integrity_switch_trust_chain_xml)}"
+            )
+        if not isinstance(show_system_integrity_all_compliance_xml, str):
+            raise TypeError(
+                f"'show_system_integrity_all_compliance_xml' should be a str type but is {type(show_system_integrity_all_compliance_xml)}"
+            )
+        if not isinstance(show_system_integrity_switch_measurement_xml, str):
+            raise TypeError(
+                f"show_system_integrity_switch_measurement_xml should be a str type but is {type(show_system_integrity_switch_measurement_xml)}"
+            )
+
+        # Very basic sanity check that the passed in xml corresponds to the expect data model
+
+        if "<trust-chain>" not in show_system_integrity_switch_trust_chain_xml:
+            raise ValueError(
+                "Unexpected content found in 'show_system_integrity_switch_trust_chain_xml'"
+            )
+        if "<compliance>" not in show_system_integrity_all_compliance_xml:
+            raise ValueError(
+                "Unexpected content found in 'show_system_integrity_all_compliance_xml'"
+            )
+        if "<measurement>" not in show_system_integrity_switch_measurement_xml:
+            raise ValueError(
+                "Unexpected content found in 'show_system_integrity_switch_measurement_xml'"
+            )
+
+        from . import yang
+
+        trust_chain_json = yang.validate_xml_measurement(
+            xml_measurement=show_system_integrity_switch_trust_chain_xml
+        )
+        compliance_json = yang.validate_xml_measurement(
+            xml_measurement=show_system_integrity_all_compliance_xml
+        )
+        measurement_json = yang.validate_xml_measurement(
+            xml_measurement=show_system_integrity_switch_measurement_xml
+        )
+
+        self.validate_v2_json(
+            show_system_integrity_switch_trust_chain_json=trust_chain_json,
+            show_system_integrity_all_compliance_json=compliance_json,
+            show_system_integrity_switch_measurement_json=measurement_json,
+        )
+
+    def validate_v2_json(
+        self,
+        show_system_integrity_switch_trust_chain_json: dict,
+        show_system_integrity_all_compliance_json: dict,
+        show_system_integrity_switch_measurement_json: dict,
+    ) -> None:
+        """
+        Takes the json data model for the Cisco-IOS-XE-system-integrity-oper:system-integrity-ios-xe-oper yang models
+
+        Does the following:
+            - Validates the
+            - Validates the Certificate Chain for the SUDI certificate
+            - Validates each of the CLI outputs against the signatures given
+            - Validates the measurements against the Known-Good-Values (KGV)
+
+        """
+
+        raise NotImplementedError("woot you got this far")

@@ -1,4 +1,4 @@
-system integrity all compliance nonce 12345
+Switch#show system integrity all compliance nonce 12345
 ---------------------------------
 LOCATION FRU=fru-rp SLOT=0 BAY=0 CHASSIS=1 NODE=0
 ---------------------------------
