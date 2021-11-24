@@ -507,7 +507,13 @@ def parse_show_system_integrity_all_compliance_nonce(cmd_output: str) -> dict:
                 "Unexpected format of 'show system integrity all compliance nonce <INT>' received"
             )
 
-        return {"category": match_dict["value"]}
+        return {
+            "category": match_dict["value"],
+            "signature": {
+                "signature": signature_match["signature"],
+                "version": int(signature_match["version"]),
+            },
+        }
 
     nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
     nonce = nonce_re.group(1) if nonce_re else None
@@ -519,7 +525,13 @@ def parse_show_system_integrity_all_compliance_nonce(cmd_output: str) -> dict:
     locations = []
     for (location, location_measurement_str) in command_chunker(cmd_output):
         location_measurement = parse_measurement(measurement=location_measurement_str)
-        location["compliance"] = location_measurement
+        location["integrity"] = [
+            {
+                "nonce": nonce,
+                "request": "choice-compliance",
+                "compliance": location_measurement,
+            }
+        ]
         locations.append(location)
 
     return {

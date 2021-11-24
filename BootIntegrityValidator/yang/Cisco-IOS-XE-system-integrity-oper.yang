@@ -50,6 +50,12 @@ module Cisco-IOS-XE-system-integrity-oper {
           "Enumerated value used to denote the integrity trust
            chain choice.";
       }
+      enum choice-compliance {
+        value 2;
+        description
+          "Enumerated value used to denote the integrity compliance
+           choice.";
+      }
     }
     description
       "Enumeration used to select between measurements and
@@ -139,6 +145,12 @@ module Cisco-IOS-XE-system-integrity-oper {
       "Group of attributes that describe a payload signature
        consisting of both a signature and the signature
        version.";
+    leaf version {
+      type uint32;
+      mandatory true;
+      description
+        "PCR Quote Signature Version.";
+    }
     leaf signature {
       type string;
       mandatory true;
@@ -146,12 +158,6 @@ module Cisco-IOS-XE-system-integrity-oper {
         "System ACT2 Signature primed by the
          nonce keyed input and signed over the state of an
          information group since last TAM reset.";
-    }
-    leaf version {
-      type uint32;
-      mandatory true;
-      description
-        "PCR Quote Signature Version.";
     }
   }
 
@@ -188,14 +194,14 @@ module Cisco-IOS-XE-system-integrity-oper {
     }
     container signature {
       description
-        "Signature representing round trip attack protection over
-         the state of the integrity group, obtained directly from
-         tam device and derived from the nonce input";
+        "Signature over the state of the measurements, signing
+         over the nonce input, signature version and the content of
+         the measurements group, performed by tam services.";
       uses system-integrity-ios-xe-oper:signature-group;
     }
   }
 
-  grouping integrity-compliance-group {
+  grouping compliance-group {
     description
       "This group element describes those aspects of the integrity
        output are verifiable. This can vary by product platform
@@ -206,6 +212,13 @@ module Cisco-IOS-XE-system-integrity-oper {
         "This field is a value rendered as a
          java script object notation string that encodes a
          description of the integrity support for this element";
+    }
+    container signature {
+      description
+        "Signature over the state of the compliance, signing
+         over the nonce input, signature version and the content of
+         the compliance group, performed by tam services.";
+      uses system-integrity-ios-xe-oper:signature-group;
     }
   }
 
@@ -236,10 +249,9 @@ module Cisco-IOS-XE-system-integrity-oper {
     }
     container signature {
       description
-        "Signature representing round trip attack protection over
-         the state of the trust chain group, obtained directly from
-         tam device, signed over the content of the certificate list,
-         as well as the nonce value.";
+        "Signature over the state of the trust chain, signing
+         over the nonce input, signature version and the content of
+         the trust chain group, performed by tam services.";
       uses system-integrity-ios-xe-oper:signature-group;
     }
   }
@@ -296,6 +308,15 @@ module Cisco-IOS-XE-system-integrity-oper {
           uses system-integrity-ios-xe-oper:trust-chain-group;
         }
       }
+      case choice-compliance {
+        container compliance {
+          description
+            "Component of compliance for functioning elements
+             denoting the degree of element support for
+             the various functional aspects of integrity.";
+          uses system-integrity-ios-xe-oper:compliance-group;
+        }
+      }
     }
   }
 
@@ -315,15 +336,6 @@ module Cisco-IOS-XE-system-integrity-oper {
           "Top level integrity container.";
         uses system-integrity-ios-xe-oper:integrity-oper-data-key;
         uses system-integrity-ios-xe-oper:integrity-oper-data-group;
-      }
-      container compliance {
-        presence "compliance";
-        description
-          "Integrity compliance statement for a given location.
-           Sets forth the integrity support expectation for a
-           location element.  The content of this field may vary
-           according to platform type and location.";
-        uses system-integrity-ios-xe-oper:integrity-compliance-group;
       }
     }
   }
