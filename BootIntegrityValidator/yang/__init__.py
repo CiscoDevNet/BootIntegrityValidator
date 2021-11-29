@@ -182,7 +182,7 @@ make sure that it has been included in the NETCONF "get" request.
         return json.loads(run.stdout)
 
 
-def parse_show_system_integrity_switch_active_r0_measurement_nonce(cmd_output):
+def parse_show_system_integrity_measurement_nonce(cmd_output: str) -> dict:
     """
     Convert cli output into a correct JSON data instance
 
@@ -230,7 +230,7 @@ def parse_show_system_integrity_switch_active_r0_measurement_nonce(cmd_output):
             text = text.lstrip()
             if text.startswith("LOCATION FRU"):
                 match = re.search(
-                    pattern=r"LOCATION FRU=(?P<fru>\S+) SLOT=(?P<slot>\d+) BAY=(?P<bay>\d+) CHASSIS=(?P<chassis>\d+) NODE=(?P<node>\d+)",
+                    pattern=r"LOCATION FRU=(?P<fru>\S+) SLOT=(?P<slot>\d+) BAY=(?P<bay>\d+) CHASSIS=(?P<chassis>-?\d+) NODE=(?P<node>\d+)",
                     string=text,
                 )
                 if not match:
@@ -254,7 +254,7 @@ def parse_show_system_integrity_switch_active_r0_measurement_nonce(cmd_output):
 
         # Extract the basic chunks of the output
         match = re.search(
-            pattern=r"Platform:\s+(?P<platform>\S+).*Boot\sHashes:\n(?P<boot_hashes>.*)OS:\nVersion:\s(?P<os_version>\S+)\nHashes:\n(?P<os_hashes>.*)Registers:\nPCR0:\s(?P<pcr_0>\S+)\nPCR8:\s(?P<pcr_8>\S*).*Signature:\nVersion:\s(?P<signature_version>\d+).*Value:\s(?P<signature>\S*)",
+            pattern=r"Platform:\s+(?P<platform>\S+).*Boot\sHashes:\n(?P<boot_hashes>.*)OS:\n\s*Version:\s(?P<os_version>\S+)\n\s*Hashes:\n(?P<os_hashes>.*)\s*Registers:\n\s*PCR0:\s(?P<pcr_0>\S+)\n\s*PCR8:\s(?P<pcr_8>\S*).*Signature:\n\s*Version:\s(?P<signature_version>\d+).*Value:[\s\n]*(?P<signature>\S*)",
             string=measurement,
             flags=re.DOTALL,
         )
@@ -323,7 +323,7 @@ def parse_show_system_integrity_switch_active_r0_measurement_nonce(cmd_output):
     }
 
 
-def parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
+def parse_show_system_integrity_trust_chain_nonce(
     cmd_output: str,
 ) -> dict:
     """
@@ -367,7 +367,7 @@ def parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
             text = text.lstrip()
             if text.startswith("LOCATION FRU"):
                 match = re.search(
-                    pattern=r"LOCATION FRU=(?P<fru>\S+) SLOT=(?P<slot>\d+) BAY=(?P<bay>\d+) CHASSIS=(?P<chassis>\d+) NODE=(?P<node>\d+)",
+                    pattern=r"LOCATION FRU=(?P<fru>\S+) SLOT=(?P<slot>\d+) BAY=(?P<bay>\d+) CHASSIS=(?P<chassis>-?\d+) NODE=(?P<node>\d+)",
                     string=text,
                 )
                 if not match:
@@ -392,7 +392,7 @@ def parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
         certificates = [
             match.groupdict()
             for match in re.finditer(
-                pattern=r"Certificate Name:\s(?P<name>.*)\n\s*(?P<value>-----BEGIN CERTIFICATE-----[a-zA-Z0-9\/+=\n]*\s+-----END CERTIFICATE-----)\n?",
+                pattern=r"Certificate Name:\s(?P<name>.*)\n\s*-----BEGIN CERTIFICATE-----\n(?P<value>[a-zA-Z0-9\/+=\n]*)\s+-----END CERTIFICATE-----\n?",
                 string=measurement,
             )
         ]
@@ -444,7 +444,7 @@ def parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
     }
 
 
-def parse_show_system_integrity_all_compliance_nonce(cmd_output: str) -> dict:
+def parse_show_system_integrity_compliance_nonce(cmd_output: str) -> dict:
     """
     Convert cli output into a correct JSON data instance
 

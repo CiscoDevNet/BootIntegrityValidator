@@ -11,3 +11,5 @@ dist/
 .vscode/
 .python-version
 tests/test_files/example_kgv.json
+node_modules/
+package-lock.json

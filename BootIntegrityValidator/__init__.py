@@ -5,12 +5,17 @@ __license__ = "MIT"
 
 import re
 import logging
-import OpenSSL
 import base64
 import struct
 import json
 import pkg_resources
 import typing
+import collections
+import copy
+import base64
+
+import OpenSSL
+
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA256
@@ -46,6 +51,10 @@ class BootIntegrityValidator(object):
         Information in the "show platform" command output is missing.
         Like the hash output
         """
+
+    Location = collections.namedtuple(
+        "Location", ["fru", "slot", "bay", "chassis", "node"]
+    )
 
     def __init__(
         self,
@@ -1066,15 +1075,15 @@ class BootIntegrityValidator(object):
 
     def validate_v2_cli(
         self,
-        show_system_integrity_switch_trust_chain_cmd_output: str,
-        show_system_integrity_all_compliance_cmd_output: str,
-        show_system_integrity_switch_measurement_cmd_output: str,
+        show_system_integrity_trust_chain_cmd_output: str,
+        show_system_integrity_compliance_cmd_output: str,
+        show_system_integrity_measurement_cmd_output: str,
     ) -> None:
         """
         Takes the cli output of
-            - `show system integrity switch active <SLOT> trust_chain nonce <INT>`
+            - `show system integrity all trust_chain nonce <INT>`
             - `show system integrity all compliance nonce <INT>`
-            - `show system integrity switch active <SLOT> measurement nonce <INT>`
+            - `show system integrity all measurement nonce <INT>`
 
         Does the following:
             - Transforms each cli output in a valid JSON data structure that matches the YANG model
@@ -1086,49 +1095,45 @@ class BootIntegrityValidator(object):
         """
 
         self._logger.info("Starting BIV v2 validation - CLI")
-        if not isinstance(show_system_integrity_switch_trust_chain_cmd_output, str):
+        if not isinstance(show_system_integrity_trust_chain_cmd_output, str):
             raise TypeError(
-                f"'show_system_integrity_switch_trust_chain_cmd_output' should be a str type but is {type(show_system_integrity_switch_trust_chain_cmd_output)}"
+                f"'show_system_integrity_trust_chain_cmd_output' should be a str type but is {type(show_system_integrity_trust_chain_cmd_output)}"
             )
-        if not isinstance(show_system_integrity_all_compliance_cmd_output, str):
+        if not isinstance(show_system_integrity_compliance_cmd_output, str):
             raise TypeError(
-                f"'show_system_integrity_all_compliance_cmd_output' should be a str type but is {type(show_system_integrity_all_compliance_cmd_output)}"
+                f"'show_system_integrity_compliance_cmd_output' should be a str type but is {type(show_system_integrity_compliance_cmd_output)}"
             )
-        if not isinstance(show_system_integrity_switch_measurement_cmd_output, str):
+        if not isinstance(show_system_integrity_measurement_cmd_output, str):
             raise TypeError(
-                f"show_system_integrity_switch_measurement_cmd_output should be a str type but is {type(show_system_integrity_switch_measurement_cmd_output)}"
+                f"show_system_integrity_measurement_cmd_output should be a str type but is {type(show_system_integrity_measurement_cmd_output)}"
             )
 
         from . import yang
 
         # Convert the cli into the json data instance
-        trust_chain_json = (
-            yang.parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
-                cmd_output=show_system_integrity_switch_trust_chain_cmd_output
-            )
+        trust_chain_json = yang.parse_show_system_integrity_trust_chain_nonce(
+            cmd_output=show_system_integrity_trust_chain_cmd_output
         )
-        compliance_json = yang.parse_show_system_integrity_all_compliance_nonce(
-            cmd_output=show_system_integrity_all_compliance_cmd_output
+        compliance_json = yang.parse_show_system_integrity_compliance_nonce(
+            cmd_output=show_system_integrity_compliance_cmd_output
         )
-        measurement_json = (
-            yang.parse_show_system_integrity_switch_active_r0_measurement_nonce(
-                cmd_output=show_system_integrity_switch_measurement_cmd_output
-            )
+        measurement_json = yang.parse_show_system_integrity_measurement_nonce(
+            cmd_output=show_system_integrity_measurement_cmd_output
         )
 
         # Now the data has been normalized to a json data instance of the YANG model
         # Call the validate function
         self.validate_v2_json(
-            show_system_integrity_switch_trust_chain_json=trust_chain_json,
-            show_system_integrity_all_compliance_json=compliance_json,
-            show_system_integrity_switch_measurement_json=measurement_json,
+            show_system_integrity_trust_chain_json=trust_chain_json,
+            show_system_integrity_compliance_json=compliance_json,
+            show_system_integrity_measurement_json=measurement_json,
         )
 
     def validate_v2_xml(
         self,
-        show_system_integrity_switch_trust_chain_xml: str,
-        show_system_integrity_all_compliance_xml: str,
-        show_system_integrity_switch_measurement_xml: str,
+        show_system_integrity_trust_chain_xml: str,
+        show_system_integrity_compliance_xml: str,
+        show_system_integrity_measurement_xml: str,
     ) -> None:
         """
         Takes the xml data model for the Cisco-IOS-XE-system-integrity-oper:system-integrity-ios-xe-oper yang models
@@ -1139,57 +1144,173 @@ class BootIntegrityValidator(object):
             - Calls the `validate_v2_json` method
         """
         self._logger.info("Starting BIV v2 validation - XML")
-        if not isinstance(show_system_integrity_switch_trust_chain_xml, str):
+        if not isinstance(show_system_integrity_trust_chain_xml, str):
             raise TypeError(
-                f"'show_system_integrity_switch_trust_chain_xml' should be a str type but is {type(show_system_integrity_switch_trust_chain_xml)}"
+                f"'show_system_integrity_trust_chain_xml' should be a str type but is {type(show_system_integrity_trust_chain_xml)}"
             )
-        if not isinstance(show_system_integrity_all_compliance_xml, str):
+        if not isinstance(show_system_integrity_compliance_xml, str):
             raise TypeError(
-                f"'show_system_integrity_all_compliance_xml' should be a str type but is {type(show_system_integrity_all_compliance_xml)}"
+                f"'show_system_integrity_compliance_xml' should be a str type but is {type(show_system_integrity_compliance_xml)}"
             )
-        if not isinstance(show_system_integrity_switch_measurement_xml, str):
+        if not isinstance(show_system_integrity_measurement_xml, str):
             raise TypeError(
-                f"show_system_integrity_switch_measurement_xml should be a str type but is {type(show_system_integrity_switch_measurement_xml)}"
+                f"show_system_integrity_measurement_xml should be a str type but is {type(show_system_integrity_measurement_xml)}"
             )
 
         # Very basic sanity check that the passed in xml corresponds to the expect data model
 
-        if "<trust-chain>" not in show_system_integrity_switch_trust_chain_xml:
+        if "<trust-chain>" not in show_system_integrity_trust_chain_xml:
             raise ValueError(
-                "Unexpected content found in 'show_system_integrity_switch_trust_chain_xml'"
+                "Unexpected content found in 'show_system_integrity_trust_chain_xml'"
             )
-        if "<compliance>" not in show_system_integrity_all_compliance_xml:
+        if "<compliance>" not in show_system_integrity_compliance_xml:
             raise ValueError(
-                "Unexpected content found in 'show_system_integrity_all_compliance_xml'"
+                "Unexpected content found in 'show_system_integrity_compliance_xml'"
             )
-        if "<measurement>" not in show_system_integrity_switch_measurement_xml:
+        if "<measurement>" not in show_system_integrity_measurement_xml:
             raise ValueError(
-                "Unexpected content found in 'show_system_integrity_switch_measurement_xml'"
+                "Unexpected content found in 'show_system_integrity_measurement_xml'"
             )
 
         from . import yang
 
         trust_chain_json = yang.validate_xml_measurement(
-            xml_measurement=show_system_integrity_switch_trust_chain_xml
+            xml_measurement=show_system_integrity_trust_chain_xml
         )
         compliance_json = yang.validate_xml_measurement(
-            xml_measurement=show_system_integrity_all_compliance_xml
+            xml_measurement=show_system_integrity_compliance_xml
         )
         measurement_json = yang.validate_xml_measurement(
-            xml_measurement=show_system_integrity_switch_measurement_xml
+            xml_measurement=show_system_integrity_measurement_xml
         )
 
         self.validate_v2_json(
-            show_system_integrity_switch_trust_chain_json=trust_chain_json,
-            show_system_integrity_all_compliance_json=compliance_json,
-            show_system_integrity_switch_measurement_json=measurement_json,
+            show_system_integrity_trust_chain_json=trust_chain_json,
+            show_system_integrity_compliance_json=compliance_json,
+            show_system_integrity_measurement_json=measurement_json,
         )
+
+    def _validate_v2_trust_chain(self, trust_chain: dict) -> dict:
+        """
+        Validate the trust chain against the Cisco CA and validate the signature
+        using the supplied SUDI certs.
+
+        Returns a dictionary of the SUDI certs accessible keyed on Location
+
+        :param: trust_chain - json data model of trust chains
+        :returns: dict - key is a `Location`, value is a `OpenSSL.x509`
+
+        """
+        self._logger.info("Starting BIV v2 validation - Trust Chain Validation")
+        crca2048 = self._cert_obj["crca2048"]
+        act2sudica = self._cert_obj["ACT2SUDICA"]
+        crca2099 = self._cert_obj["crca2099"]
+        hasudi = self._cert_obj["hasudi"]
+
+        def same_cert(a, b):
+            a_bytes = OpenSSL.crypto.dump_certificate(
+                type=OpenSSL.crypto.FILETYPE_ASN1, cert=a
+            )
+            b_bytes = OpenSSL.crypto.dump_certificate(
+                type=OpenSSL.crypto.FILETYPE_ASN1, cert=b
+            )
+            return a_bytes == b_bytes
+
+        sudi_certs = {}
+        for location in trust_chain[
+            "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data"
+        ]["location"]:
+            location_dict = copy.deepcopy(location)
+            del location_dict["integrity"]
+            trust_chain = location["integrity"][0]["trust-chain"]
+            nonce = int(location["integrity"][0]["nonce"])
+            loc = BootIntegrityValidator.Location(**location_dict)
+            cert_chain = trust_chain["trust-chain"]
+
+            # Compare CA against known good CA
+            ca_cert_text = cert_chain[0]["value"]
+            ca_cert_bytes = base64.b64decode(ca_cert_text)
+            ca_cert_obj = OpenSSL.crypto.load_certificate(
+                type=OpenSSL.crypto.FILETYPE_ASN1, buffer=ca_cert_bytes
+            )
+            if not any([same_cert(x, ca_cert_obj) for x in [crca2048, crca2099]]):
+                self._logger.error(
+                    "Cisco Root CA in cmd_output doesn't match a known good Cisco Root CA"
+                )
+                raise BootIntegrityValidator.ValidationException(
+                    "Cisco Root CA in cmd_output doesn't match known good Cisco Root CA"
+                )
+
+            # Compare Sub-CA against known good Sub-CA
+            cisco_sudi_ca_text = cert_chain[1]["value"]
+            cisco_sudi_ca_bytes = base64.b64decode(cisco_sudi_ca_text)
+            cisco_sudi_obj = OpenSSL.crypto.load_certificate(
+                type=OpenSSL.crypto.FILETYPE_ASN1, buffer=cisco_sudi_ca_bytes
+            )
+            if not any([same_cert(x, cisco_sudi_obj)] for x in [act2sudica, hasudi]):
+                self._logger.error(
+                    "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
+                )
+                raise BootIntegrityValidator.ValidationException(
+                    "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
+                )
+
+            # Device sudi cert
+            device_sudi_text = cert_chain[2]["value"]
+            device_sudi_bytes = base64.b64decode(device_sudi_text)
+            device_sudi_obj = OpenSSL.crypto.load_certificate(
+                type=OpenSSL.crypto.FILETYPE_ASN1, buffer=device_sudi_bytes
+            )
+            # validate Device ID Certificate
+            try:
+                self._logger.info("Validating device certificate against Cisco CAs")
+                store_ctx = OpenSSL.crypto.X509StoreContext(
+                    store=self._trusted_store, certificate=device_sudi_obj
+                )
+                store_ctx.verify_certificate()
+                # SUDI certificate is validate
+                sudi_certs[loc] = {"nonce": nonce, "cert_obj": device_sudi_obj}
+            except OpenSSL.crypto.X509StoreContextError:
+                self._logger.error(
+                    "Device ID Certificate failed validation against Cisco CA Roots"
+                )
+                raise BootIntegrityValidator.ValidationException(
+                    "Device ID Certificate failed validation against Cisco CA Roots"
+                )
+
+            # The SUDI certificate is valid, now we need to validate the signature over the three certs
+
+            signature = trust_chain["signature"]
+            header = struct.pack(">QI", nonce, signature["version"])
+            data_to_be_hashed = (
+                header + ca_cert_bytes + cisco_sudi_ca_bytes + device_sudi_bytes
+            )
+            calculated_hash = SHA256.new(data=data_to_be_hashed)
+
+            # Validate calculated hash
+            device_pkey_bin = OpenSSL.crypto.dump_publickey(
+                type=OpenSSL.crypto.FILETYPE_ASN1, pkey=device_sudi_obj.get_pubkey()
+            )
+            device_rsa_key = RSA.importKey(device_pkey_bin)
+            verifier = PKCS1_v1_5.new(device_rsa_key)
+
+            signature_bytes = base64.b16decode(signature["signature"])
+            if not verifier.verify(calculated_hash, signature_bytes):
+                raise BootIntegrityValidator.ValidationException(
+                    "Signature on show system integrity all trust-chain failed validation"
+                )
+            sudi_certs[loc] = device_sudi_obj
+
+        return sudi_certs
+
+    def _validate_v2_compliance(self, compliance: dict) -> dict:
+        pass
 
     def validate_v2_json(
         self,
-        show_system_integrity_switch_trust_chain_json: dict,
-        show_system_integrity_all_compliance_json: dict,
-        show_system_integrity_switch_measurement_json: dict,
+        show_system_integrity_trust_chain_json: dict,
+        show_system_integrity_compliance_json: dict,
+        show_system_integrity_measurement_json: dict,
     ) -> None:
         """
         Takes the json data model for the Cisco-IOS-XE-system-integrity-oper:system-integrity-ios-xe-oper yang models
@@ -1201,5 +1322,56 @@ class BootIntegrityValidator(object):
             - Validates the measurements against the Known-Good-Values (KGV)
 
         """
+        self._logger.info("Starting BIV v2 validation - JSON")
+        if not isinstance(show_system_integrity_trust_chain_json, dict):
+            raise TypeError(
+                f"'show_system_integrity_trust_chain_json' was a '{type(show_system_integrity_trust_chain_json)}' expected a 'dict'"
+            )
+        if not isinstance(show_system_integrity_compliance_json, dict):
+            raise TypeError(
+                f"'show_system_integrity_compliance_json' was a '{type(show_system_integrity_compliance_json)}' expected a 'dict'"
+            )
+        if not isinstance(show_system_integrity_measurement_json, dict):
+            raise TypeError(
+                f"'show_system_integrity_measurement_json' was a '{type(show_system_integrity_measurement_json)}' expected a 'dict'"
+            )
+
+        # Very basic sanity check that the passed in json corresponds to the expect data model
+
+        if '"trust-chain"' not in json.dumps(show_system_integrity_trust_chain_json):
+            raise ValueError(
+                "Unexpected content found in 'show_system_integrity_trust_chain_json'"
+            )
+        if '"compliance"' not in json.dumps(show_system_integrity_compliance_json):
+            raise ValueError(
+                "Unexpected content found in 'show_system_integrity_compliance_json'"
+            )
+        if '"measurement"' not in json.dumps(show_system_integrity_measurement_json):
+            raise ValueError(
+                "Unexpected content found in 'show_system_integrity_measurement_json'"
+            )
+
+        # validate the json objects against the data model
+        from . import yang
+
+        yang.validate_json_measurement(
+            json_measurement=show_system_integrity_trust_chain_json
+        )
+        yang.validate_json_measurement(
+            json_measurement=show_system_integrity_compliance_json
+        )
+        yang.validate_json_measurement(
+            json_measurement=show_system_integrity_measurement_json
+        )
+
+        # Now the data model is 'shaped' correctly we need to validate the actual data
+        # Validate each sudi certificate from each location
+        sudi_certs = self._validate_v2_trust_chain(
+            trust_chain=show_system_integrity_trust_chain_json
+        )
+
+        compliance_info = self._validate_v2_compliance(
+            compliance=show_system_integrity_compliance_json
+        )
 
         raise NotImplementedError("woot you got this far")

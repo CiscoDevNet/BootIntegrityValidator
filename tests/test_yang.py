@@ -81,7 +81,7 @@ def test_validate_invalid_json_measurement():
 def test_parse_cli_compliance():
     cmd_output = open(TEST_FILES_DIR / "v2" / "cli_valid_compliance.txt").read()
     json_data = (
-        BootIntegrityValidator.yang.parse_show_system_integrity_all_compliance_nonce(
+        BootIntegrityValidator.yang.parse_show_system_integrity_compliance_nonce(
             cmd_output=cmd_output
         )
     )
@@ -90,15 +90,19 @@ def test_parse_cli_compliance():
 
 def test_parse_cli_trust_chain():
     cmd_output = open(TEST_FILES_DIR / "v2" / "cli_valid_trust_chain.txt").read()
-    json_data = BootIntegrityValidator.yang.parse_show_system_integrity_switch_active_r0_trust_chain_nonce(
-        cmd_output=cmd_output
+    json_data = (
+        BootIntegrityValidator.yang.parse_show_system_integrity_trust_chain_nonce(
+            cmd_output=cmd_output
+        )
     )
     BootIntegrityValidator.yang.validate_json_measurement(json_measurement=json_data)
 
 
 def test_parse_cli_integrity_measure():
     cmd_output = open(TEST_FILES_DIR / "v2" / "cli_valid_multiple_measure.txt").read()
-    json_data = BootIntegrityValidator.yang.parse_show_system_integrity_switch_active_r0_measurement_nonce(
-        cmd_output=cmd_output
+    json_data = (
+        BootIntegrityValidator.yang.parse_show_system_integrity_measurement_nonce(
+            cmd_output=cmd_output
+        )
     )
     BootIntegrityValidator.yang.validate_json_measurement(json_measurement=json_data)
