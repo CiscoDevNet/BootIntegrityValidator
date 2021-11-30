@@ -1303,7 +1303,270 @@ class BootIntegrityValidator(object):
 
         return sudi_certs
 
-    def _validate_v2_compliance(self, compliance: dict) -> dict:
+    def _validate_v2_compliance(
+        self,
+        compliance: dict,
+        sudi_certs: typing.Mapping[Location, OpenSSL.crypto.X509],
+    ) -> dict:
+
+        compliance_info = {}
+        for location in compliance[
+            "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data"
+        ]["location"]:
+            location_dict = copy.deepcopy(location)
+            del location_dict["integrity"]
+            loc = BootIntegrityValidator.Location(**location_dict)
+            compliance = location["integrity"][0]["compliance"]
+            signature = compliance["signature"]
+
+            nonce = int(location["integrity"][0]["nonce"])
+            header = struct.pack(">QI", nonce, signature["version"])
+            compliance_bytes = compliance["category"].encode()
+            data_to_be_hashed = header + compliance_bytes
+            calculated_hash = SHA256.new(data=data_to_be_hashed)
+
+            try:
+                device_sudi_obj = sudi_certs[loc]
+            except KeyError:
+                raise BootIntegrityValidator.MissingInfo(
+                    f"Compliance information can't be validated because the trust-chain for the following location is missing {loc}"
+                )
+            device_pkey_bin = OpenSSL.crypto.dump_publickey(
+                type=OpenSSL.crypto.FILETYPE_ASN1, pkey=device_sudi_obj.get_pubkey()
+            )
+            device_rsa_key = RSA.importKey(device_pkey_bin)
+            verifier = PKCS1_v1_5.new(device_rsa_key)
+            signature_bytes = base64.b16decode(signature["signature"])
+            if not verifier.verify(calculated_hash, signature_bytes):
+                raise BootIntegrityValidator.ValidationException(
+                    "Signature on show system integrity all compliance failed validation"
+                )
+            compliance_info[loc] = json.loads(compliance["category"])
+
+        return compliance_info
+
+    def _validate_v2_measurement(
+        self,
+        measurements: dict,
+        compliance_info: dict,
+        sudi_certs: typing.Mapping[Location, OpenSSL.crypto.X509],
+    ) -> None:
+        self._logger.info("Start v2 measure validation")
+
+        def kgvs_for_dtype(dtype):
+            if "bulkHash" not in self._kgv or not isinstance(
+                self._kgv["bulkHash"], list
+            ):
+                raise BootIntegrityValidator.InvalidFormat(
+                    "Structure of known_good_values provided in initializer is invalid"
+                )
+            for kgv in self._kgv["bulkHash"]:
+                if kgv.get("dtype", "") == dtype:
+                    yield kgv
+
+        def validate_hash(version, hash_value, kgvs):
+            """
+            Looks for the cli_version in the versions and if present then checks the cli_hash against biv_hashes in entries
+
+            :param cli_version: str
+            :param cli_hash:  str
+            :param kgvs:  list of dict
+            :return: Nothing if validation successful
+
+            :raises ValueError if cli_version not found in versions
+            :raises ValidationError if cli_version found but none of biv_entries found
+            :raises  BootIntegrityValidator.InvalidFormat, KeyError if versions is invalid format
+            """
+
+            assert isinstance(
+                version, str
+            ), f"cli_version should be a string type:  {type(version)!r}"
+            assert isinstance(
+                hash_value, str
+            ), f"cli_hash should be a string type:  {type(hash_value)!r}"
+
+            for kgv in kgvs:
+                assert isinstance(kgv, dict), "all elements in versions should be dict"
+                if kgv.get("biv_hash", "") == hash_value:
+                    return
+
+            raise BootIntegrityValidator.ValidationException(
+                f"version with biv_hash {hash_value} not found in list of valid hashes"
+            )
+
+        def validate_all_os_hashes(os_hashes: typing.Tuple[str, str]):
+            kgvs = kgvs_for_dtype(dtype="osimage")
+            first_filename, first_hash = os_hashes[0]
+            if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
+                # This is a mono image.  We can reduce the set down to a small set of pkgs
+                parent_kgv = None
+                for kgv in kgvs:
+                    if kgv["filename"] == first_filename:
+                        parent_kgv = kgv
+                        break
+
+                if not parent_kgv:
+                    raise BootIntegrityValidator.ValidationException(
+                        f"version with biv_hash {first_hash} not found in list of valid hashes"
+                    )
+
+                pkg_kgvs = {
+                    kgv["filename"]: kgv.get("biv_hash") for kgv in parent_kgv["pkg"]
+                }
+            else:
+                # Have to get ALL osimage and ALL sub packages into a single dictionary
+                pkg_kgvs = {}
+                for kgv in kgvs:
+                    pkg_kgvs[kgv["filename"]] = kgv.get("biv_hash")
+                    for pkg_kgv in kgv.get("pkg", []):
+                        pkg_kgvs[pkg_kgv["filename"]] = pkg_kgv.get("biv_hash")
+
+            for given_pkg_filename, given_pkg_hash in os_hashes[1:]:
+                if given_pkg_filename not in pkg_kgvs:
+                    raise BootIntegrityValidator.ValidationException(
+                        f"package {given_pkg_filename} not found in list of valid hashes"
+                    )
+                if pkg_kgvs[given_pkg_filename] != given_pkg_hash:
+                    raise BootIntegrityValidator.ValidationException(
+                        f"version {given_pkg_filename} with biv_hash {given_pkg_hash} doesn't match Known good value of {pkg_kgvs[given_pkg_filename]}"
+                    )
+
+        for location in measurements[
+            "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data"
+        ]["location"]:
+            self._logger.debug(f"Working on {location}")
+            location_dict = copy.deepcopy(location)
+            del location_dict["integrity"]
+            loc = BootIntegrityValidator.Location(**location_dict)
+            measurement = location["integrity"][0]["measurement"]
+            signature = measurement["signature"]
+
+            nonce = int(location["integrity"][0]["nonce"])
+            header = struct.pack(">QI", nonce, signature["version"])
+            # Validate the Signature over PCR0 and PCR8 first
+
+            pcr0_hex = None
+            pcr8_hex = None
+            for pcr in measurement["register"]:
+                if pcr["index"] == 0:
+                    pcr0_hex = pcr["pcr-content"]
+                elif pcr["index"] == 8:
+                    pcr8_hex = pcr["pcr-content"]
+
+            assert pcr0_hex
+            assert pcr8_hex
+            data_to_be_hashed = (
+                header + base64.b16decode(pcr0_hex) + base64.b16decode(pcr8_hex)
+            )
+            calculated_hash = SHA256.new(data_to_be_hashed)
+
+            try:
+                device_sudi_obj = sudi_certs[loc]
+            except KeyError:
+                raise BootIntegrityValidator.MissingInfo(
+                    f"Measurement information can't be validated because the trust-chain for the following location is missing {loc}"
+                )
+            device_pkey_bin = OpenSSL.crypto.dump_publickey(
+                type=OpenSSL.crypto.FILETYPE_ASN1, pkey=device_sudi_obj.get_pubkey()
+            )
+            device_rsa_key = RSA.importKey(device_pkey_bin)
+            verifier = PKCS1_v1_5.new(device_rsa_key)
+            signature_bytes = base64.b16decode(signature["signature"])
+            if not verifier.verify(calculated_hash, signature_bytes):
+                raise BootIntegrityValidator.ValidationException(
+                    f"Signature on show system integrity all compliance failed validation for {loc}"
+                )
+
+            # Signature Validation of PCR registers successful
+
+            # Signature over the reported PCR0 and PRCR8 passed.  Now they need to be computed and compared against
+            # the received values.
+            # PCR0 is extended using 256-bits of 0 as the initial PCR0 and the SHA256 hash of Boot 0 Hash measurement.
+            # The PRC0 is then extended further using the SHA256 hash of the Boot Loader measurement
+            # The PCR8 is extended using 256-bits of 0 as the initial PRC8 and the SHA256 hash of OS Hash measurement.
+
+            # PCR0 Calculation
+            hash_output = b"\x00" * 32
+            for stage in sorted(measurement["boot-loader"], key=lambda s: s["stage"]):
+                stage_hash_bytes = SHA256.new(base64.b16decode(stage["hash"])).digest()
+                hash_output = SHA256.new(hash_output + stage_hash_bytes).digest()
+            pcr0_computed_text = base64.b16encode(hash_output).decode()
+
+            if pcr0_computed_text != pcr0_hex:
+                raise BootIntegrityValidator.ValidationException(
+                    f"The received PCR0 was signed correctly but doesn't match the computed PRC0 using the given measurements for {loc}"
+                )
+
+            # PCR0 Validation Successful
+            # PCR8 Calculation
+            hash_output = b"\x00" * 32
+            for index in sorted(
+                measurement["operating-system"]["package-integrity"],
+                key=lambda i: i["index"],
+            ):
+                os_hash_bytes = SHA256.new(base64.b16decode(index["hash"])).digest()
+                hash_output = SHA256.new(hash_output + os_hash_bytes).digest()
+            pcr8_computed_text = base64.b16encode(hash_output).decode()
+
+            if pcr8_computed_text != pcr8_hex:
+                raise BootIntegrityValidator.ValidationException(
+                    f"The received PCR8 was signed correctly but doesn't match the computed PRC8 using the given measurements for {loc}"
+                )
+            # PCR8 Validation Successful
+
+            # Now we have confirmed that the output was generated from boxes running the hashes
+            # that are included in the output.  Now we have to validate that the hashes are found
+            # within the KGV
+
+            self._logger.debug(
+                f"Succesfully validated the cryptographic output provided for {loc}"
+            )
+
+            # First stage of boot hashes = boot0
+            # Second and further stages of boot hashes = bootLoader
+            # OS hashes = osImageVersions
+
+            try:
+                compliance_loc_info = compliance_info[loc]
+            except KeyError:
+                raise BootIntegrityValidator.MissingInfo(
+                    f"Measurement information can't be validated because the compliance info for the following location is missing {loc}"
+                )
+
+            biv_len = compliance_loc_info["capabilities"]["bivlen"]
+            (boot0_measure, *bootloader_measures) = sorted(
+                measurement["boot-loader"], key=lambda s: s["stage"]
+            )
+            # Validate boot0
+            validate_hash(
+                version=boot0_measure["version"],
+                hash_value=boot0_measure["hash"],
+                kgvs=kgvs_for_dtype(dtype="boot0"),
+            )
+
+            # Validate remaining bootloaders
+            for bootloader_measure in bootloader_measures:
+                validate_hash(
+                    version=bootloader_measure["version"],
+                    hash_value=bootloader_measure["hash"],
+                    kgvs=kgvs_for_dtype(dtype="blr"),
+                )
+
+            os_measures = sorted(
+                measurement["operating-systems"], key=lambda s: s["stage"]
+            )
+            if len(os_measures) == 1:
+                # Single OS hash
+                validate_hash(
+                    version=os_measures[0]["version"],
+                    hash_value=os_measures[0]["hash"],
+                    kgvs=kgvs_for_dtype(dtype="osimage"),
+                )
+            else:
+                validate_all_os_hashes(
+                    os_hashes=((h["version"], h["hash"]) for h in os_measures)
+                )
+
         pass
 
     def validate_v2_json(
@@ -1371,7 +1634,11 @@ class BootIntegrityValidator(object):
         )
 
         compliance_info = self._validate_v2_compliance(
-            compliance=show_system_integrity_compliance_json
+            compliance=show_system_integrity_compliance_json, sudi_certs=sudi_certs
         )
 
-        raise NotImplementedError("woot you got this far")
+        self._validate_v2_measurement(
+            measurements=show_system_integrity_measurement_json,
+            compliance_info=compliance_info,
+            sudi_certs=sudi_certs,
+        )

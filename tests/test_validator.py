@@ -313,7 +313,7 @@ class TestBootIntegrityValidator(object):
             self.test_files / "v2" / "netconf_valid_compliance.xml"
         ).read()
         measurement_xml = open(
-            self.test_files / "v2" / "netconf_valid_multiple_locations.xml"
+            self.test_files / "v2" / "netconf_valid_measurement.xml"
         ).read()
 
         with pytest.raises(NotImplementedError):
