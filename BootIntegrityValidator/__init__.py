@@ -1394,7 +1394,7 @@ class BootIntegrityValidator(object):
                 f"version with biv_hash {hash_value} not found in list of valid hashes"
             )
 
-        def validate_all_os_hashes(os_hashes: typing.Tuple[str, str]):
+        def validate_all_os_hashes(os_hashes: typing.List[typing.Tuple[str, str]]):
             kgvs = kgvs_for_dtype(dtype="osimage")
             first_filename, first_hash = os_hashes[0]
             if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
@@ -1421,7 +1421,7 @@ class BootIntegrityValidator(object):
                     for pkg_kgv in kgv.get("pkg", []):
                         pkg_kgvs[pkg_kgv["filename"]] = pkg_kgv.get("biv_hash")
 
-            for given_pkg_filename, given_pkg_hash in os_hashes[1:]:
+            for given_pkg_filename, given_pkg_hash in os_hashes:
                 if given_pkg_filename not in pkg_kgvs:
                     raise BootIntegrityValidator.ValidationException(
                         f"package {given_pkg_filename} not found in list of valid hashes"
@@ -1553,7 +1553,8 @@ class BootIntegrityValidator(object):
                 )
 
             os_measures = sorted(
-                measurement["operating-systems"], key=lambda s: s["stage"]
+                measurement["operating-system"]["package-integrity"],
+                key=lambda s: s["index"],
             )
             if len(os_measures) == 1:
                 # Single OS hash
@@ -1564,10 +1565,12 @@ class BootIntegrityValidator(object):
                 )
             else:
                 validate_all_os_hashes(
-                    os_hashes=((h["version"], h["hash"]) for h in os_measures)
+                    os_hashes=([(h["name"], h["hash"]) for h in os_measures])
                 )
 
-        pass
+            # Location successfully validated
+
+        # Whole measurement successfully validated
 
     def validate_v2_json(
         self,

@@ -276,8 +276,8 @@ class TestBootIntegrityValidator(object):
             )
 
     def test_validate_v2_cli(self):
-        kgv = gzip.open(
-            self.test_files / "example_kgv.json.gzip",
+        kgv = open(
+            self.test_files / "v2" / "sandbox.kgv.json",
             "rb",
         )
         bi = BootIntegrityValidator(known_good_values=kgv.read())
@@ -292,16 +292,15 @@ class TestBootIntegrityValidator(object):
             self.test_files / "v2" / "cli_valid_multiple_measure.txt"
         ).read()
 
-        with pytest.raises(NotImplementedError):
-            bi.validate_v2_cli(
-                show_system_integrity_trust_chain_cmd_output=trust_chain_cli,
-                show_system_integrity_compliance_cmd_output=compliance_cli,
-                show_system_integrity_measurement_cmd_output=measurement_cli,
-            )
+        bi.validate_v2_cli(
+            show_system_integrity_trust_chain_cmd_output=trust_chain_cli,
+            show_system_integrity_compliance_cmd_output=compliance_cli,
+            show_system_integrity_measurement_cmd_output=measurement_cli,
+        )
 
     def test_validate_v2_xml(self):
-        kgv = gzip.open(
-            self.test_files / "example_kgv.json.gzip",
+        kgv = open(
+            self.test_files / "v2" / "sandbox.kgv.json",
             "rb",
         )
         bi = BootIntegrityValidator(known_good_values=kgv.read())
@@ -313,12 +312,11 @@ class TestBootIntegrityValidator(object):
             self.test_files / "v2" / "netconf_valid_compliance.xml"
         ).read()
         measurement_xml = open(
-            self.test_files / "v2" / "netconf_valid_measurement.xml"
+            self.test_files / "v2" / "netconf_valid_multiple_locations.xml"
         ).read()
 
-        with pytest.raises(NotImplementedError):
-            bi.validate_v2_xml(
-                show_system_integrity_trust_chain_xml=trust_chain_xml,
-                show_system_integrity_compliance_xml=compliance_xml,
-                show_system_integrity_measurement_xml=measurement_xml,
-            )
+        bi.validate_v2_xml(
+            show_system_integrity_trust_chain_xml=trust_chain_xml,
+            show_system_integrity_compliance_xml=compliance_xml,
+            show_system_integrity_measurement_xml=measurement_xml,
+        )

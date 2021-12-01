@@ -468,7 +468,7 @@ def parse_show_system_integrity_compliance_nonce(cmd_output: str) -> dict:
             text = text.lstrip()
             if text.startswith("LOCATION FRU"):
                 match = re.search(
-                    pattern=r"LOCATION FRU=(?P<fru>\S+) SLOT=(?P<slot>\d+) BAY=(?P<bay>\d+) CHASSIS=(?P<chassis>\d+) NODE=(?P<node>\d+)",
+                    pattern=r"LOCATION FRU=(?P<fru>\S+) SLOT=(?P<slot>\d+) BAY=(?P<bay>\d+) CHASSIS=(?P<chassis>-?\d+) NODE=(?P<node>\d+)",
                     string=text,
                 )
                 if not match:
@@ -484,7 +484,7 @@ def parse_show_system_integrity_compliance_nonce(cmd_output: str) -> dict:
                     "node": int(match_dict["node"]),
                 }
                 continue
-            elif text.startswith('{"capabilities":'):
+            elif text.startswith("Compliance:"):
                 yield (location, text)
                 location = ""
 

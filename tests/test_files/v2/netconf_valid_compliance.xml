@@ -1,6 +1,12 @@
 <system-integrity-oper-data
   xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-system-integrity-oper"
-><location><fru>fru-rp</fru><slot>1</slot><bay>0</bay><chassis>-1</chassis><node
+><location><fru>fru-rp</fru><slot>0</slot><bay>0</bay><chassis>-1</chassis><node
+    >0</node><integrity><nonce>12345</nonce><request
+      >choice-compliance</request><compliance><category
+        >{"capabilities":{"secure_boot":true,"tam_service":"hardware","hwver_bootmeasure":false,"ldwm_envelope":false,"num_btlstage":2,"bivlen":64,"register_disabled":[{"pcr0":false},{"pcr8":false}]}}</category><signature
+        ><version>1</version><signature
+          >1AE719CA47B3DBF371C367CC51DC91D35573B5A901941AA63ACB1FF01B956CBF74687B1D4D2B4388AA229786A63CA54E66B6DEBE7E3D1F5E57D4746AF022272899AA4AF82B9FF835EF1A63E23656B0AC3554D155986054F4D49DCFE717A289E30AAEF728420CBE63392550F02C440C262B395E5000B7EB1D25A2916C6A36073646E7FACC9D6CD9A2643F45925FC6E87BC48DFA9E7E7BFE9582C88C517FB4293BF21D72AE9DDDB66571C58F9EF5E51381C6E63F4473B417D28B32B18DDE2514EAE6B798311357AA135CE8F6CFF5160E875465F08A904883722DFA0521FFC5728810BDEF3DE19FCF1D75E2F024B5CA0AEC7D4D4FC0B743EEFB67F9FA0D08E81DB0</signature></signature></compliance></integrity></location><location
+  ><fru>fru-rp</fru><slot>1</slot><bay>0</bay><chassis>-1</chassis><node
     >0</node><integrity><nonce>12345</nonce><request
       >choice-compliance</request><compliance><category
         >{"capabilities":{"secure_boot":true,"tam_service":"hardware","hwver_bootmeasure":false,"ldwm_envelope":false,"num_btlstage":2,"bivlen":64,"register_disabled":[{"pcr0":false},{"pcr8":false}]}}</category><signature
