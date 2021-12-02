@@ -1,0 +1,8 @@
+.tox/
+.vscode/
+BootIntegrityValidator.egg-info/
+BootIntegrityValidator/
+node_modules/
+package-lock.json
+tests/
+tmp/
