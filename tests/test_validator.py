@@ -1,6 +1,7 @@
 import pytest
 import gzip
 import pathlib
+import json
 
 from BootIntegrityValidator import BootIntegrityValidator
 
@@ -319,4 +320,27 @@ class TestBootIntegrityValidator(object):
             show_system_integrity_trust_chain_xml=trust_chain_xml,
             show_system_integrity_compliance_xml=compliance_xml,
             show_system_integrity_measurement_xml=measurement_xml,
+        )
+
+    def test_validate_v2_json(self):
+        kgv = open(
+            self.test_files / "v2" / "sandbox.kgv.json",
+            "rb",
+        )
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+
+        trust_chain_json = json.load(
+            open(self.test_files / "v2" / "restconf_valid_trust_chain.json")
+        )
+        compliance_json = json.load(
+            open(self.test_files / "v2" / "restconf_valid_compliance.json")
+        )
+        measurement_json = json.load(
+            open(self.test_files / "v2" / "restconf_valid_measurement.json")
+        )
+
+        bi.validate_v2_json(
+            show_system_integrity_trust_chain_json=trust_chain_json,
+            show_system_integrity_compliance_json=compliance_json,
+            show_system_integrity_measurement_json=measurement_json,
         )
