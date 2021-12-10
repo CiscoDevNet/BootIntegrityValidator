@@ -21,7 +21,7 @@ A new set of `validate_v2_xxxxx` functions have been added to validate the comma
 
 - [example_kgv.json](../base/example_kgv.json)
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
-- [cli_valid_compliance](./cli_valid_compliance.txt)
+- [cli_valid_compliance.txt](./cli_valid_compliance.txt)
 - [cli_valid_trust_chain.txt](./cli_valid_trust_chain.txt)
 - [cli_valid_measurement.txt](./cli_valid_measurement.txt)
 
@@ -61,7 +61,7 @@ biv.validate_v2_cli(
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
 - [netconf_valid_compliance.xml](./netconf_valid_compliance.xml)
 - [netconf_valid_trust_chain.xml](./netconf_valid_trust_chain.xml)
-- [netconf_valid_measurement.xml](./netconf_measurement.xml)
+- [netconf_valid_measurement.xml](./netconf_valid_measurement.xml)
 
 ```python
 
@@ -99,7 +99,7 @@ biv.validate_v2_xml(
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
 - [restconf_valid_compliance.json](./restconf_valid_compliance.json)
 - [restconf_valid_trust_chain.json](./restconf_valid_trust_chain.json)
-- [restconf_valid_measurement.json](./restconf_measurement.json)
+- [restconf_valid_measurement.json](./restconf_valid_measurement.json)
 
 ```python
 
