@@ -23,7 +23,7 @@ A new set of `validate_v2_xxxxx` functions have been added to validate the comma
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
 - [cli_valid_compliance](./cli_valid_compliance.txt)
 - [cli_valid_trust_chain.txt](./cli_valid_trust_chain.txt)
-- [cli_valid_measurement.txt](./cli_measurement.txt)
+- [cli_valid_measurement.txt](./cli_valid_measurement.txt)
 
 ```python
 
@@ -59,9 +59,9 @@ biv.validate_v2_cli(
 
 - [example_kgv.json](../base/example_kgv.json)
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
-- [netconf_valid_compliance](./netconf_valid_compliance.txt)
-- [netconf_valid_trust_chain.txt](./netconf_valid_trust_chain.txt)
-- [netconf_valid_measurement.txt](./netconf_measurement.txt)
+- [netconf_valid_compliance.xml](./netconf_valid_compliance.xml)
+- [netconf_valid_trust_chain.xml](./netconf_valid_trust_chain.xml)
+- [netconf_valid_measurement.xml](./netconf_measurement.xml)
 
 ```python
 
@@ -81,9 +81,9 @@ biv = BootIntegrityValidator.BootIntegrityValidator(
 #  Validatition function raises exceptions on validation failures as specified in V1
 #
 #####################################################################################
-netconf_trust_chain = open("netconf_valid_trust_chain.txt", "r").read()
-netconf_compliance = open("netconf_valid_compliance.txt", "r").read()
-netconf_measurement = open("netconf_valid_measurement.txt", "r").read()
+netconf_trust_chain = open("netconf_valid_trust_chain.xml", "r").read()
+netconf_compliance = open("netconf_valid_compliance.xml", "r").read()
+netconf_measurement = open("netconf_valid_measurement.xml", "r").read()
 
 biv.validate_v2_xml(
     show_system_integrity_trust_chain_xml=netconf_trust_chain,
@@ -97,9 +97,9 @@ biv.validate_v2_xml(
 
 - [example_kgv.json](../base/example_kgv.json)
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
-- [restconf_valid_compliance](./restconf_valid_compliance.txt)
-- [restconf_valid_trust_chain.txt](./restconf_valid_trust_chain.txt)
-- [restconf_valid_measurement.txt](./restconf_measurement.txt)
+- [restconf_valid_compliance.json](./restconf_valid_compliance.json)
+- [restconf_valid_trust_chain.json](./restconf_valid_trust_chain.json)
+- [restconf_valid_measurement.json](./restconf_measurement.json)
 
 ```python
 
@@ -119,9 +119,9 @@ biv = BootIntegrityValidator.BootIntegrityValidator(
 #  Validatition function raises exceptions on validation failures as specified in V1
 #
 #####################################################################################
-restconf_trust_chain = open("restconf_valid_trust_chain.txt", "r").read()
-restconf_compliance = open("restconf_valid_compliance.txt", "r").read()
-restconf_measurement = open("restconf_valid_measurement.txt", "r").read()
+restconf_trust_chain = open("restconf_valid_trust_chain.json", "r").read()
+restconf_compliance = open("restconf_valid_compliance.json", "r").read()
+restconf_measurement = open("restconf_valid_measurement.json", "r").read()
 
 biv.validate_v2_json(
     show_system_integrity_trust_chain_json=restconf_trust_chain,
