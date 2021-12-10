@@ -2,7 +2,10 @@
 
 ### Validation of BIV values (version 1)
 
-Boot Integrity Values (BIV) are available using the following commands on the Cisco IOS-XE CLI: - `show platform integrity` - `show platform sudi`
+Boot Integrity Values (BIV) are available using the following commands on the Cisco IOS-XE CLI:
+
+- `show platform integrity`
+- `show platform sudi`
 
 To take the content from the command output and call the `validate` function on the `BootIntegrityValidator` object.
 

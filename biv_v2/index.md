@@ -1,4 +1,6 @@
-## This is the page for the BIV v1 commands
+## BIV v2 commands
+
+With Cisco IOS-XE 17.9
 
 ### Validation of BIV values (version 1)
 

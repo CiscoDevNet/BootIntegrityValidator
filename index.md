@@ -1,42 +1,29 @@
-## Welcome to GitHub Pages
+## Welcome to BootIntegrityValidator
 
-You can use the [editor on GitHub](https://github.com/CiscoDevNet/BootIntegrityValidator/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+This repo is a Python module that validates the Boot Integrity Visibility output generated on a Cisco IOS-XE device. See [the configuration guide](http://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst3650/software/release/16-3/configuration_guide/b_163_consolidated_3650_cg/b_163_consolidated_3650_cg_chapter_01110010.pdf) for more information about the Cisco IOS-XE feature.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+This python module will cryptographically (integrity) validate the output to ensure that it was generated on the specified device. Then the Boot 0, Boot Loader and OS integrity values will be checked against a database of "Known Good Values" (KGV) provided by Cisco. This database of KGV will also be cryptographically validated that it was provided by Cisco.
 
-### Markdown
+This allows an administrator to validate the runtime state of the device and confirm that it is currently running **genuine** Cisco software.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+---
 
-```markdown
-Syntax highlighted code block
+## Getting started
 
-# Header 1
+### Requirements
 
-## Header 2
+- `openssl`
+- `yanglint` (optional) - A tool included in `libyang` [C library](https://github.com/CESNET/libyang) . The tool validates yang models and data instances against models. Only used in the `v2` validation methods
 
-### Header 3
+### Installation
 
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+```
+python3 -m pip install BootIntegrityValidator
 ```
 
-[v1](./biv_v1)
-[v2](./biv_v2)
+### Usage
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/CiscoDevNet/BootIntegrityValidator/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+1. [Initiazation of base object](./base/)
+2. Validate devices:
+   - [v1](./biv_v1) commands (Prior to Cisco IOS-XE 17.9)
+   - [v2](./biv_v2) commands (Cisco IOS-XE 17.9+)
