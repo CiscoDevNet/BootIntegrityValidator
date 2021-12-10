@@ -1,20 +1,29 @@
 ## BIV v2 commands
 
-With Cisco IOS-XE 17.9
+With Cisco IOS-XE 17.9 new commands were added to collect the BIV measurements. The data could be collected via:
 
-### Validation of BIV values (version 1)
+- CLI via the commands
+  - `show system integrity all compliance nonce 12345`
+  - `show system integrity all trust-chain nonce 12345`
+  - `show system integrity all measurement nonce 12345`
+- NETCONF (XML YANG)
+- RESTCONF (JSON YANG)
 
-Boot Integrity Values (BIV) are available using the following commands on the Cisco IOS-XE CLI: - `show platform integrity` - `show platform sudi`
+A new set of `validate_v2_xxxxx` functions have been added to validate the command output.
 
-To take the content from the command output and call the `validate` function on the `BootIntegrityValidator` object.
+- `validate_v2_json` - function takes the JSON data response from RESTCONF and validates the data instance against the YANG model. Then the actual measurements are validated cryptographically against the SUDI certificates, ACT security chip and the Known-Good-Values Database.
+- `validate_v2_xml` - function takes the XML data responses from NETCONF and validates the data instance against the YANG model. The data is transformed into a JSON data instance and then calls `validate_v2_json`.
+- `validate_v2_cli` - function takes the CLI output, transforms it into a JSON data instance and then calls the `validate_v2_json` funtcion.
 
-Files:
+### Validation of BIV values (version 2)
+
+#### CLI example
 
 - [example_kgv.json](../base/example_kgv.json)
 - [example_kgv.json.signature](../base/example_kgv.json.signature)
-- [example_kgv.json.bad_signature](../base/example_kgv.json.bad_signature)
-- [example_show_plat_int.txt](./example_show_plat_int.txt)
-- [example_show_plat_sudi.txt](./example_show_plat_sudi.txt)
+- [cli_valid_compliance](./cli_valid_compliance.txt)
+- [cli_valid_trust_chain.txt](./cli_valid_trust_chain.txt)
+- [cli_valid_measurement.txt](./cli_measurement.txt)
 
 ```python
 
@@ -29,48 +38,106 @@ biv = BootIntegrityValidator.BootIntegrityValidator(
 )
 
 #####################################################################################
+#  CLI validation
 #
-# Pass in the CLI output that has been save to file:
-#       show platform sudi
-#    and
-#       show platform integrity
+#  Validatition function raises exceptions on validation failures as specified in V1
 #
 #####################################################################################
-show_plat_suid = open("example_show_plat_sudi.txt", "r")
-suid = show_plat_suid.read()
+cli_trust_chain = open("cli_valid_trust_chain.txt", "r").read()
+cli_compliance = open("cli_valid_compliance.txt", "r").read()
+cli_measurement = open("cli_valid_measurement.txt", "r").read()
 
-show_plat_int = open("example_show_plat_int.txt", "r")
-spi = show_plat_int.read()
-
-#####################################################################################
-#
-# The validate function will raise specific exceptions if validation fails
-# or it is unable to validate the output.
-#
-#####################################################################################
-
-try:
-    biv.validate(
-        show_platform_sudi_certificate_cmd_output=suid,
-        show_platform_integrity_cmd_output=spi,
-    )
-    print("Successfully validated!")
-
-except BootIntegrityValidator.BootIntegrityValidator.InvalidFormat:
-    print("know_good_values had an invalid format")
-    raise
-
-except BootIntegrityValidator.BootIntegrityValidator.VersionNotFound:
-    print("Version of software Not Found in known_good_values")
-    raise
-
-except BootIntegrityValidator.BootIntegrityValidator.ProductNotFound:
-    print("Product in cli output not mapped to 'product' in known_good_values")
-    raise
-
-except BootIntegrityValidator.BootIntegrityValidator.ValidationException:
-    print("Validation failed")
-    raise
-
+biv.validate_v2_cli(
+    show_system_integrity_trust_chain_cmd_output=cli_trust_chain,
+    show_system_integrity_compliance_cmd_output=cli_compliance,
+    show_system_integrity_measurement_cmd_output=cli_measurement
+)
 
 ```
+
+#### XML example
+
+- [example_kgv.json](../base/example_kgv.json)
+- [example_kgv.json.signature](../base/example_kgv.json.signature)
+- [netconf_valid_compliance](./netconf_valid_compliance.txt)
+- [netconf_valid_trust_chain.txt](./netconf_valid_trust_chain.txt)
+- [netconf_valid_measurement.txt](./netconf_measurement.txt)
+
+```python
+
+kgv = open("example_kgv.json", "rb")
+kgv_sig = open("example_kgv.json.signature", "rb")
+kgv_bytes = kgv.read()
+
+biv = BootIntegrityValidator.BootIntegrityValidator(
+    known_good_values=kgv_bytes,
+    known_good_values_signature=kgv_sig.read(),
+    log_level=logging.DEBUG,
+)
+
+#####################################################################################
+#  CLI validation
+#
+#  Validatition function raises exceptions on validation failures as specified in V1
+#
+#####################################################################################
+netconf_trust_chain = open("netconf_valid_trust_chain.txt", "r").read()
+netconf_compliance = open("netconf_valid_compliance.txt", "r").read()
+netconf_measurement = open("netconf_valid_measurement.txt", "r").read()
+
+biv.validate_v2_xml(
+    show_system_integrity_trust_chain_xml=netconf_trust_chain,
+    show_system_integrity_compliance_xml=netconf_compliance,
+    show_system_integrity_measurement_xml=netconf_measurement
+)
+
+```
+
+#### JSON example
+
+- [example_kgv.json](../base/example_kgv.json)
+- [example_kgv.json.signature](../base/example_kgv.json.signature)
+- [restconf_valid_compliance](./restconf_valid_compliance.txt)
+- [restconf_valid_trust_chain.txt](./restconf_valid_trust_chain.txt)
+- [restconf_valid_measurement.txt](./restconf_measurement.txt)
+
+```python
+
+kgv = open("example_kgv.json", "rb")
+kgv_sig = open("example_kgv.json.signature", "rb")
+kgv_bytes = kgv.read()
+
+biv = BootIntegrityValidator.BootIntegrityValidator(
+    known_good_values=kgv_bytes,
+    known_good_values_signature=kgv_sig.read(),
+    log_level=logging.DEBUG,
+)
+
+#####################################################################################
+#  CLI validation
+#
+#  Validatition function raises exceptions on validation failures as specified in V1
+#
+#####################################################################################
+restconf_trust_chain = open("restconf_valid_trust_chain.txt", "r").read()
+restconf_compliance = open("restconf_valid_compliance.txt", "r").read()
+restconf_measurement = open("restconf_valid_measurement.txt", "r").read()
+
+biv.validate_v2_json(
+    show_system_integrity_trust_chain_json=restconf_trust_chain,
+    show_system_integrity_compliance_json=restconf_compliance,
+    show_system_integrity_measurement_json=measurement
+)
+
+```
+
+### Exceptions
+
+The `validate_v2_xxxxx` function will raise the exceptions as specified by the `validate` function regarding validation failures. However they may also raise the following exceptions types:
+
+- `InvalidYangDataInstance` - The data instanct provided is not compliant against the YANG model.
+- `InvalidYangModel` - The YANG models themselves are invalid. The model is included with this package but could be changed/updated within the `yang` folder of the distrubution
+- `MissingDependencyError` - Failed to execute the command line tool `yanglint`. `yanglint` is the program that validates the YANG models and that the data instances against the model. The dependency can be installed via:
+  - source - https://github.com/CESNET/libyang
+  - apt (debian/ubuntu) package `yangtools` - http://manpages.ubuntu.com/manpages/focal/man1/yanglint.1.html
+  - rpm (red hat/centos) package `libyang` https://centos.pkgs.org/8-stream/centos-appstream-x86_64/libyang-1.0.184-1.el8.x86_64.rpm.html

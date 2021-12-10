@@ -1,0 +1,113 @@
+{
+  "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data": {
+    "location": [
+      {
+        "fru": "fru-rp",
+        "slot": 0,
+        "bay": 0,
+        "chassis": -1,
+        "node": 0,
+        "integrity": [
+          {
+            "nonce": "13245",
+            "request": "choice-measurement",
+            "measurement": {
+              "platform": "ASR1006-X           ",
+              "boot-loader": [
+                {
+                  "stage": 0,
+                  "version": "F01071R16.227fdc1872019-02-28",
+                  "hash": "33FA5054A8688976B35947F09930A525A7DAED8ED63C96559A8EE708AB83A0C2"
+                },
+                {
+                  "stage": 1,
+                  "version": "17.7(2r)",
+                  "hash": "1C65F3179BB4CA62101B102EB9D6E45B40C948998A7F11E49C8A6637F3762B52173774E8319CCCC0526E0AF90E9101E53EE19639C35B5A539E5F1C866A864693"
+                }
+              ],
+              "operating-system": {
+                "version": "2021-11-30_21.28_bbuffam",
+                "package-integrity": [
+                  {
+                    "index": 0,
+                    "name": "asr1000rpx86-rpboot.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "243CD9F003F25A3D42657E7701429895A9858F5C30FE7656DF26E6F0998EE938991EF246176596D1D714086E6C45BCD2F11B49F4AA6549EB009EA9EDB3F8065A"
+                  },
+                  {
+                    "index": 1,
+                    "name": "asr1000rpx86-espbase.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "EBB91841AB6C44048D734750DA3E83FC9B10CA58105CC4D6B5F772B15072F6BB0E7FF18E098B7EBBB4659305F68A646519FE2D350C5C1860B2903A4766D7A2A3"
+                  },
+                  {
+                    "index": 2,
+                    "name": "asr1000rpx86-rpaccess.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "8466D8A3FFBB7809E2B305B92949E357615F56A740B7EE48F400907FD508454A1BFEA3D2299470FF3BE51365E8A10F7BB3ADACC8B6E30B1BCF4E4ECA14EC935E"
+                  },
+                  {
+                    "index": 3,
+                    "name": "asr1000rpx86-webui.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "04EB1A6E1BC554BB239CCE265B02E14898F31353E076F2A3B096216A55A98AA007D3AA712A34F6DC0E6D709F85FBBF1901EF2E448D91FD0103C987A2BFE2F6A3"
+                  },
+                  {
+                    "index": 4,
+                    "name": "asr1000rpx86-elcspa.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "6647905D4CB84F61195524EB54554ECB5636D9ACD01E3075530D2AC924B2FD7B433BB066433EB9E0C2A6A4B1CEFFEBA9D323DF4B41FCD81908F9847B5CB86391"
+                  },
+                  {
+                    "index": 5,
+                    "name": "asr1000rpx86-sipspa.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "6C015E2D71AF154F523AAA9F482C9D62D77B48C5E485F2A4DD4B84BE2B52B10769DEEC7EE0EC9272F5E135B788C40B3689D7CE488E61006EA73148955DFD4A71"
+                  },
+                  {
+                    "index": 6,
+                    "name": "asr1000rpx86-sipbase.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "BF5FAF094A0D2B485E2D81192FB9176DB49B2F0E1D00B83F0F46AFC856DAB3F52F0529AF8EC6B590F71B76F7EDA86DF103C8BEFDE1ACA3A51DA7775282052242"
+                  },
+                  {
+                    "index": 7,
+                    "name": "asr1000rpx86-elcbase.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "ACF48CECD428D8B2ED832E95906C9460F7B0DDEA1BF5B510CED1B55F68D9AFEC27D5ED637A0F54AD3E73159D6087368975BAC170B73FBE4A76C5B186E22C9B38"
+                  },
+                  {
+                    "index": 8,
+                    "name": "asr1000rpx86-rpbase.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "F1BE5CC7B9593B7815FDB3CDCB66C874EA78A404DEA9BCBB49C33B6D79D83068DCF52B61948ED82D242EBA794FFBEAE1BFE34E1462D0B2A9E26D53B795E7B3B4"
+                  },
+                  {
+                    "index": 9,
+                    "name": "asr1000rpx86-espx86base.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "47066A079F029D5BA5905875D7BA97FA16B40FEC80A96764132497F603A5692AF0149EA151A8B85DFE05BB1BC706F4DFF5640F6E36445CB7074A0FCF6FC6D43E"
+                  },
+                  {
+                    "index": 10,
+                    "name": "asr1000rpx86-rpcontrol.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "F43FC95CB890E338D31FB59FA99289BCD1D7CA704399788A5EC8C856E405164AC6A2081BDE124D59FCB15CF8DBCD6C54B9E24C582DAD2084D3E1E592B843B95A"
+                  },
+                  {
+                    "index": 11,
+                    "name": "asr1000rpx86-rpios-universalk9.2021-11-30_21.28_bbuffam.SSA.pkg",
+                    "hash": "AFEAEB247D71EF1C43B3BEE3A32DC12DABA1BA3D4561AEA09587052927E2D4D1965C22BFA10783104C7CE469BD3DB5B65F6B38224199A51CAF1F5BA46FB3AAE1"
+                  }
+                ]
+              },
+              "register": [
+                {
+                  "index": 0,
+                  "pcr-content": "1E265BF3A23DCBAB88623936052AFE7391B77DF2EF60078EEEF1ABF399BEE192"
+                },
+                {
+                  "index": 8,
+                  "pcr-content": "754E46C7122FE112EAB91656F729BE4BF7C4413D3F084319089665DC067BD2A1"
+                }
+              ],
+              "signature": {
+                "version": 1,
+                "signature": "427CAF1933D2C443E8BEA72A1AD2CA4AE0A237907D8986B23FB314BA84FEF5594EC075A4686E91753C9357B0C644CA87A2C5DEA43F2E890AC8146B76C0F0D0E40BA8FC678932645BD7E8AF56CAB7A9CC8B3969F094FEF60F4FD05F259FED7BA3934BDB40B8A156882DD41600AF2F67B968246BEFD172DF6EC0D006F9736BFA84E38B3EA12BAA4C2F2BAB1EB5F0E8E21BBD3E0BB5FC9893FC14AA3EF0BEFCA8E0101EAF44EA348D6BCD2A25A46E8721D8D22DB391978AB9084369174C5B2DB47A3103BFBD25F044298DAE6654F689B5F11A11CC32A2D671E720E6C5128AB4B9E226A36A92C894BDCC21699BD399281BCA2661F67081D904CED1193D1A41334C48"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
