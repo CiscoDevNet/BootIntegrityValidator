@@ -25,5 +25,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox tox-gh-actions
+      - name: What version of pip does install pycrypto
+        run: |
+          python -m pip download pycrypto==2.6.1
+          python -m pip hash pycrypto-2.6.1.tar.gz
       - name: Test with tox
         run: tox
