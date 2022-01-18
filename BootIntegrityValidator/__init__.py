@@ -747,6 +747,29 @@ class BootIntegrityValidator(object):
         # Some of the biv_hashes are truncated
         acceptable_biv_hash_lengths = (64, 128)
 
+        if "Signature" in cmd_output:
+            if "device" in self._cert_obj:
+                self._logger.info(
+                    "'show platform integrity' command has signature.  Attempt to validate"
+                )
+                try:
+                    self._validate_show_platform_integrity_cmd_output_signature(
+                        cmd_output=cmd_output,
+                        device_cert_object=self._cert_obj["device"],
+                    )
+                except BootIntegrityValidator.ValidationException as e:
+                    self._logger.error("Validation failed", exc_info=True)
+                    raise
+
+                self._logger.info("Validation succeeded")
+            else:
+                self._logger.error(
+                    "Can't validate the 'show platform integrity' command signature as the 'show platform sudi certificate' command wasn't provided"
+                )
+                raise BootIntegrityValidator.MissingInfo(
+                    "Signature can't be validated because the SUDI certificates haven't been provided"
+                )
+
         # Got the KGV for this platform
         # Check the boot0Version first
         boot_0_version_re = re.search(
@@ -858,29 +881,6 @@ class BootIntegrityValidator(object):
         else:
             # Multi hash to validate
             validate_all_os_hashes(os_hashes=os_hashes)
-
-        if "Signature" in cmd_output:
-            if "device" in self._cert_obj:
-                self._logger.info(
-                    "'show platform integrity' command has signature.  Attempt to validate"
-                )
-                try:
-                    self._validate_show_platform_integrity_cmd_output_signature(
-                        cmd_output=cmd_output,
-                        device_cert_object=self._cert_obj["device"],
-                    )
-                except BootIntegrityValidator.ValidationException as e:
-                    self._logger.error("Validation failed", exc_info=True)
-                    raise
-
-                self._logger.info("Validation succeeded")
-            else:
-                self._logger.error(
-                    "Can't validate the 'show platform integrity' command signature as the 'show platform sudi certificate' command wasn't provided"
-                )
-                raise BootIntegrityValidator.MissingInfo(
-                    "Signature can't be validated because the SUDI certificates haven't been provided"
-                )
 
         self._logger.info(
             "Finished validating the 'show platform integrity' command output"
