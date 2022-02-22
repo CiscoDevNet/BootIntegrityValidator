@@ -773,10 +773,10 @@ class BootIntegrityValidator(object):
         # Got the KGV for this platform
         # Check the boot0Version first
         boot_0_version_re = re.search(
-            pattern=r"Boot 0 Version:[^\S\n]*(.*)\n", string=cmd_output
+            pattern=r"Boot 0 Version:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
         boot_0_hash_re = re.search(
-            pattern=r"Boot 0 Hash:[^\S\n]*(.*)\n", string=cmd_output
+            pattern=r"Boot 0 Hash:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
 
         self._logger.info("Attempting to extract Boot 0 Version and Hash")
@@ -811,10 +811,10 @@ class BootIntegrityValidator(object):
 
         # Check the bootLoader second
         boot_loader_version_re = re.search(
-            pattern=r"Boot Loader Version:[^\S\n]*(.*)\n", string=cmd_output
+            pattern=r"Boot Loader Version:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
         boot_loader_hash_re = re.search(
-            pattern=r"Boot Loader Hash:[^\S\n]*(.*)\n", string=cmd_output
+            pattern=r"Boot Loader Hash:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
 
         self._logger.info("Attempting to extract Boot Loader Version and Hash")
@@ -849,7 +849,7 @@ class BootIntegrityValidator(object):
         # Check the OS third but there might be 1 or many hashes
         self._logger.info("Attempt to extract OS Version and Hash")
         os_version_re = re.search(
-            pattern=r"OS Version:[^\S\n]*(.*)\n", string=cmd_output
+            pattern=r"OS Version:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
         if not os_version_re or not os_version_re.group(1):
             raise BootIntegrityValidator.MissingInfo(
@@ -906,7 +906,7 @@ class BootIntegrityValidator(object):
         """
 
         single_os_hash_re = re.search(
-            pattern=r"OS Hash:[^\S\n]*(.*)\n", string=cmd_output
+            pattern=r"OS Hash:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
         if single_os_hash_re:
             return (("single_hash", single_os_hash_re.group(1)),)

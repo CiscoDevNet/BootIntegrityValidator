@@ -2,6 +2,7 @@ import pytest
 import gzip
 import pathlib
 import json
+import io
 
 from BootIntegrityValidator import BootIntegrityValidator
 
@@ -344,3 +345,14 @@ class TestBootIntegrityValidator(object):
             show_system_integrity_compliance_json=compliance_json,
             show_system_integrity_measurement_json=measurement_json,
         )
+    
+    def test_validate_crlf_eol(self):
+        show_plat = io.open(self.test_files / "show_plat_int_crlf_eol.txt", 'rt', newline='')
+        show_sudi = io.open(self.test_files / "show_plat_sudi_crlf_eol.txt", 'rt', newline='')
+        kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        bi.validate(
+            show_platform_integrity_cmd_output=show_plat.read(),
+            show_platform_sudi_certificate_cmd_output=show_sudi.read()
+        )
+
