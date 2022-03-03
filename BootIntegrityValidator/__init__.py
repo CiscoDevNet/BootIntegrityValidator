@@ -1321,8 +1321,10 @@ class BootIntegrityValidator(object):
 
             nonce = int(location["integrity"][0]["nonce"])
             header = struct.pack(">QI", nonce, signature["version"])
-            compliance_bytes = compliance["category"].encode()
-            data_to_be_hashed = header + compliance_bytes
+            capability_bytes = b""
+            for capability in compliance["capability"]:
+                capability_bytes += capability["attribute"].encode() + capability["value"].encode()
+            data_to_be_hashed = header + capability_bytes
             calculated_hash = SHA256.new(data=data_to_be_hashed)
 
             try:
@@ -1341,7 +1343,7 @@ class BootIntegrityValidator(object):
                 raise BootIntegrityValidator.ValidationException(
                     "Signature on show system integrity all compliance failed validation"
                 )
-            compliance_info[loc] = json.loads(compliance["category"])
+            compliance_info[loc] = compliance["capability"]
 
         return compliance_info
 
@@ -1500,11 +1502,8 @@ class BootIntegrityValidator(object):
             # PCR0 Validation Successful
             # PCR8 Calculation
             hash_output = b"\x00" * 32
-            for index in sorted(
-                measurement["operating-system"]["package-integrity"],
-                key=lambda i: i["index"],
-            ):
-                os_hash_bytes = SHA256.new(base64.b16decode(index["hash"])).digest()
+            for pkg in measurement["operating-system"]["package-integrity"]:
+                os_hash_bytes = SHA256.new(base64.b16decode(pkg["hash"])).digest()
                 hash_output = SHA256.new(hash_output + os_hash_bytes).digest()
             pcr8_computed_text = base64.b16encode(hash_output).decode()
 
@@ -1533,7 +1532,12 @@ class BootIntegrityValidator(object):
                     f"Measurement information can't be validated because the compliance info for the following location is missing {loc}"
                 )
 
-            biv_len = compliance_loc_info["capabilities"]["bivlen"]
+            biv_len = None
+            for capability in compliance_loc_info:
+                if capability["attribute"] == "bivlen":
+                    biv_len = int(capability["value"])
+            assert biv_len
+
             (boot0_measure, *bootloader_measures) = sorted(
                 measurement["boot-loader"], key=lambda s: s["stage"]
             )
@@ -1552,10 +1556,7 @@ class BootIntegrityValidator(object):
                     kgvs=kgvs_for_dtype(dtype="blr"),
                 )
 
-            os_measures = sorted(
-                measurement["operating-system"]["package-integrity"],
-                key=lambda s: s["index"],
-            )
+            os_measures = measurement["operating-system"]["package-integrity"]
             if len(os_measures) == 1:
                 # Single OS hash
                 validate_hash(

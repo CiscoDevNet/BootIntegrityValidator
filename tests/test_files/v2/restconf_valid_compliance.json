@@ -9,13 +9,42 @@
         "node": 0,
         "integrity": [
           {
-            "nonce": "13245",
+            "nonce": "12345",
             "request": "choice-compliance",
             "compliance": {
-              "category": "{\"capabilities\":{\"secure_boot\":true,\"tam_service\":\"hardware\",\"hwver_bootmeasure\":false,\"ldwm_envelope\":false,\"num_btlstage\":2,\"bivlen\":64,\"register_disabled\":[{\"pcr0\":false},{\"pcr8\":false}]}}",
+              "capability": [
+                {
+                  "attribute": "secure_boot",
+                  "value": "true"
+                },
+                {
+                  "attribute": "tam_service",
+                  "value": "hardware"
+                },
+                {
+                  "attribute": "ldwm_envelope",
+                  "value": "false"
+                },
+                {
+                  "attribute": "num_btlstage",
+                  "value": "2"
+                },
+                {
+                  "attribute": "bivlen",
+                  "value": "64"
+                },
+                {
+                  "attribute": "register.pcr0.disabled",
+                  "value": "false"
+                },
+                {
+                  "attribute": "register.pcr8.disabled",
+                  "value": "false"
+                }
+              ],
               "signature": {
                 "version": 1,
-                "signature": "0DB4A0DBB602280A4AA54B07BB29186D6B7E19EEA5544FA5BEF1EE312362445FFD854759F76FE6D636D13DE1CBBFA6EF117475E52AAB8990A692AD04663B888161BF2F4FC88191CEA0D46AC41B73A72EE2BD4A1D8C98D1D5B3C465BA5C00AE078195BA5A21492500DD0FD0728CC5A45A76067F59FCF42DFCAED24C7C3AD421BD9B31526E679EDEF9616993B955E4C098C0233C4FFC8AAEEE1E2E8931FA0A7E2624662E0314785B11385D5838DFAC567D5A5321A1FFDE3AD621DE383A26474ECC8BBC208410C0BF8FE3F0E67F5FBAC57438E6FB95732229B604AABD341D360149F0BD59019ABD828076B9AC7F8A4A80B22A4C470E4533654F84D6AA21861009E6"
+                "signature": "B2280DDE554C209B1BDA6ED13C84E37EB3CE4E0929F42A46D7BD836D850900CEB59EBB4E77ED6668ACA546D3ACB0AE5249993C8B2907CCF1DDFE5618B1A95448AF53276C633FC19A673634BC56C1A7B058051680350326F6892874E488EA09162A0CF35CCB1827AAEF934BA800EE531455FECDF39F979E4F8DCF50168CF7FEDCDB69F07FC03C817B96D0D3A7AFD32AC727205895B31E5A2692716711707EE90E59C19B3C790FAF534C66B41F17A0DB9551F4EEF23C83C9E7717BEE240501C2FCD6C3D7618AD97689ABEB2C801913771AFE32608FD7071EB5CFEC0F49A4614C415DAA7113D274E36ED08956B75D91F8DCC828EED78F509AA483CA05656BBD9E5E"
               }
             }
           }

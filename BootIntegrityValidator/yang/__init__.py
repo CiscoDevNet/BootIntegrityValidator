@@ -65,7 +65,7 @@ The YANG definition file failed validation with the following command:
 ------ END OF STDERR
             """
             )
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         raise MissingDependencyError(
             """
 BootIntegriyValidator has a dependency on the program 'yanglint'.
@@ -75,7 +75,7 @@ This software can be found via:
     apt (debian/ubuntu) package 'yangtools' - http://manpages.ubuntu.com/manpages/focal/man1/yanglint.1.html
     rpm (red hat/centos) package 'libyang' https://centos.pkgs.org/8-stream/centos-appstream-x86_64/libyang-1.0.184-1.el8.x86_64.rpm.html
 """
-        )
+        ) from e
 
 
 def validate_xml_measurement(xml_measurement: str) -> dict:
@@ -93,7 +93,7 @@ def validate_xml_measurement(xml_measurement: str) -> dict:
 
     model_path = pathlib.Path(__path__[0])
     if not __yang_model_validated:
-        validate_yang_models(files=[f for f in model_path.glob("*.yang")])
+        validate_yang_models(files=list(model_path.glob("*.yang")))
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".xml") as tmp_file_for_xml:
         tmp_file_for_xml.write(xml_measurement)
@@ -145,7 +145,7 @@ def validate_json_measurement(json_measurement: dict) -> dict:
 
     model_path = pathlib.Path(__path__[0])
     if not __yang_model_validated:
-        validate_yang_models(files=[f for f in model_path.glob("*.yang")])
+        validate_yang_models(files=list(model_path.glob("*.yang")))
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as tmp_file_for_json:
         tmp_file_for_json.write(json.dumps(json_measurement))
@@ -275,10 +275,10 @@ def parse_show_system_integrity_measurement_nonce(cmd_output: str) -> dict:
 
         # Extract the os hashes
         oses = []
-        for (index, line) in enumerate(match_dict["os_hashes"].split("\n")):
+        for line in match_dict["os_hashes"].split("\n"):
             os_match = re.search(pattern=r"(?P<name>\S+):\s(?P<hash>\S+)", string=line)
             if os_match:
-                oses.append({"index": index, **os_match.groupdict()})
+                oses.append(os_match.groupdict())
 
         return {
             "platform": match_dict["platform"],
@@ -451,14 +451,21 @@ def parse_show_system_integrity_compliance_nonce(cmd_output: str) -> dict:
     Example cli output:
     system integrity all compliance nonce 12345
     ---------------------------------
-    LOCATION FRU=fru-rp SLOT=0 BAY=0 CHASSIS=1 NODE=0
+    LOCATION FRU=fru-rp SLOT=0 BAY=0 CHASSIS=-1 NODE=0
     ---------------------------------
-    {"capabilities":{"secure_boot":true,"hwver_bootmeasure":false,"ldwm_envelope":false,"num_btlstage":2,"bivlen":64,"register_disabled":[{"pcr0":false},{"pcr8":false}]}}
-
+    Compliance:
+    secure_boot: true
+    tam_service: hardware
+    ldwm_envelope: false
+    num_btlstage: 2
+    bivlen: 64
+    register.pcr0.disabled: false
+    register.pcr8.disabled: false
 
     Signature:
     Version: 1
-    Value:    0720E69B0CE0EB1C9AAA1DEB79C27454EF5CFC405426268F1595B0A7C9B009E4B5F8865850B13268EF8729ACAFAD0992E167EBA6CA8B29568D65ED61D7ADE0023B211848698EA61FEA60AC6C2DCFC7EA30A7909F7BB6FD7D168518B3F7A8D9D86B8984A08CEC595442A3A2AD34D71FC2D066D8DFA30370A160DFAFD5E875780F164D072FB71EF807047DEE94CD6384F488C83AD26D220FF69E09EC52DB4BA3353ECC1CC99454378137392432514C4B5C651750C94B8ABFB6DB7B86525C7F5B70D38049DF839DE083BB5CD787D76088FC0273F3EA5A3DAF8EE922289816345AF5E5074FD340AC8BEB8C79A9FE07A03B4AE5AEA418DC31A5B74F12388A303ADA1A#
+    Value:
+    10C2EE5F7FBFAA8AC777AB65775D54FA390204B065D4A19F8A120E485490CC69F237ADC478751AEFEE4AB24CF7520CE2C68A75013630EBFEE28A7C17C8772AF7427A5A7D6089D86526D4F1C62FE42574582D71BF8073405A92684C4BDDFCF6E1C3C295A106F21DC2C43837FD7299415C630E245C9F3738690E3F74828A1CABC75497081CEE5A4A847CD31D3385D1E3AE51588DF93B5FFEF8722A83755738C4304FA70E3D101F44A0F6D6B85FD076956D90D23F6A7A822061B00E76431B831592AECAD119D81D23A69B17F8300DA1B8C4C7B81741103899AFDF2CE84C28886975500FD348835592654491D1EDD5DD7F4CB121B6216F0B282B326B03C799311FE4
 
     """
 
@@ -489,15 +496,18 @@ def parse_show_system_integrity_compliance_nonce(cmd_output: str) -> dict:
                 location = ""
 
     def parse_measurement(measurement: str) -> dict:
-        match = re.search(
-            pattern=r'(?P<value>{"capabilities":.*)\n', string=measurement
-        )
+        match = re.search(pattern=r"Compliance:\n(.*)Signature",string=measurement,flags=re.DOTALL)
         if not match:
             raise ValueError(
                 "Unexpected format of 'show system integrity all compliance nonce <INT>' received"
             )
-        match_dict = match.groupdict()
-
+        
+        capabilities = [
+            {
+                "attribute": l.strip().split(":")[0].strip(),
+                "value": l.strip().split(":")[1].strip()
+            } for l in match.group(1).splitlines() if l.strip()
+        ]
         signature_match = re.search(
             pattern=r"Signature:\n\s+Version:\s(?P<version>\d+)\n\s+Value:\s+(?P<signature>\S+)",
             string=measurement,
@@ -508,7 +518,7 @@ def parse_show_system_integrity_compliance_nonce(cmd_output: str) -> dict:
             )
 
         return {
-            "category": match_dict["value"],
+            "capability": capabilities,
             "signature": {
                 "signature": signature_match["signature"],
                 "version": int(signature_match["version"]),

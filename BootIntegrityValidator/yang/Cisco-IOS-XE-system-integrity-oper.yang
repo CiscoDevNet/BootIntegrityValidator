@@ -2,32 +2,26 @@ module Cisco-IOS-XE-system-integrity-oper {
   yang-version 1;
   namespace "http://cisco.com/ns/yang/Cisco-IOS-XE-system-integrity-oper";
   prefix system-integrity-ios-xe-oper;
-
   import Cisco-IOS-XE-common-types {
     prefix common-types-ios-xe;
   }
   import cisco-semver {
     prefix cisco-semver;
   }
-
   organization
     "Cisco Systems, Inc.";
   contact
     "Cisco Systems, Inc.
      Customer Service
-
      Postal: 170 W Tasman Drive
      San Jose, CA 95134
-
      Tel: +1 1800 553-NETS
-
      E-mail: cs-yang@cisco.com";
   description
     "This module contains a collection of YANG definitions
      for system integrity operational data.
-     Copyright (c) 2020 by Cisco Systems, Inc.
+     Copyright (c) 2020, 2022 by Cisco Systems, Inc.
      All rights reserved.";
-
   revision 2021-07-01 {
     description
       "Initial revision";
@@ -35,7 +29,6 @@ module Cisco-IOS-XE-system-integrity-oper {
       "1.0.0";
     cisco-semver:module-version "1.0.0";
   }
-
   typedef choice-integrity {
     type enumeration {
       enum choice-measurement {
@@ -61,7 +54,6 @@ module Cisco-IOS-XE-system-integrity-oper {
       "Enumeration used to select between measurements and
        trust chain.";
   }
-
   grouping boot-loader-group {
     description
       "Group of aggregate attributes describing a boot loader stage";
@@ -81,16 +73,10 @@ module Cisco-IOS-XE-system-integrity-oper {
         "Hash signature of current boot loader stage";
     }
   }
-
   grouping package-group {
     description
       "Group to aggregate attributes describing a
        package";
-    leaf index {
-      type uint16;
-      description
-        "List position identifier";
-    }
     leaf name {
       type string;
       description
@@ -102,7 +88,6 @@ module Cisco-IOS-XE-system-integrity-oper {
         "Package Hash";
     }
   }
-
   grouping operating-system-group {
     description
       "Group to aggregate attributes describing
@@ -124,7 +109,6 @@ module Cisco-IOS-XE-system-integrity-oper {
       uses system-integrity-ios-xe-oper:package-group;
     }
   }
-
   grouping pcr-register-group {
     description
       "Describes a pcr register entry";
@@ -139,7 +123,6 @@ module Cisco-IOS-XE-system-integrity-oper {
         "Current state of the pcr register.";
     }
   }
-
   grouping signature-group {
     description
       "Group of attributes that describe a payload signature
@@ -160,7 +143,6 @@ module Cisco-IOS-XE-system-integrity-oper {
          information group since last TAM reset.";
     }
   }
-
   grouping measurement-group {
     description
       "Integrity Measurements.";
@@ -200,28 +182,45 @@ module Cisco-IOS-XE-system-integrity-oper {
       uses system-integrity-ios-xe-oper:signature-group;
     }
   }
-
+  grouping capability-group {
+    description
+      "A capability group describes a particular capability
+       attribute value pair associated with a participating
+       operational element.";
+    leaf attribute {
+      type string;
+      description
+        "The capability attribute active on this element.";
+    }
+    leaf value {
+      type string;
+      description
+        "The capability attribute value in effect on this element.";
+    }
+  }
   grouping compliance-group {
     description
       "This group element describes those aspects of the integrity
-       output are verifiable. This can vary by product platform
-       type";
-    leaf category {
-      type string;
+       output that can be considered verifiable. This can be
+       determined by careful examination of the capabilities list
+       and is expected to vary by product family, product family
+       platform or even by participating operational element within
+       a platform instance.";
+    list capability {
       description
-        "This field is a value rendered as a
-         java script object notation string that encodes a
-         description of the integrity support for this element";
+        "Each member of this list must be examined to determine
+         what aspects of the known good value support are active
+         with respect to this operational element.";
+      uses system-integrity-ios-xe-oper:capability-group;
     }
     container signature {
       description
-        "Signature over the state of the compliance, signing
+        "Signature over the state of the capability list, signing
          over the nonce input, signature version and the content of
-         the compliance group, performed by tam services.";
+         the capability group, performed by tam services.";
       uses system-integrity-ios-xe-oper:signature-group;
     }
   }
-
   grouping certificate-group {
     description
       "This group elements describes an element of the chain of trust";
@@ -236,7 +235,6 @@ module Cisco-IOS-XE-system-integrity-oper {
         "Certificate measurement value.";
     }
   }
-
   grouping trust-chain-group {
     description
       "Content consisting of the trust chain list and a valid signature
@@ -255,15 +253,19 @@ module Cisco-IOS-XE-system-integrity-oper {
       uses system-integrity-ios-xe-oper:signature-group;
     }
   }
-
   grouping integrity-oper-data-key {
     description
       "Compound key aggregates a mandatory nonce input value
-       with the choice to retrieve the measurement or the trust chain.";
+       with the choice to retrieve the measurement, trust chain or
+       compliance response.
+       Security requirements dictate that the compound key value must
+       be fully specified both in terms of nonce attribute and
+       in terms of the request attribute in order to retrieve a
+       non-empty, signed response";
     leaf nonce {
       type string;
       description
-        "Signing input to used in conjunction with signature on the response
+        "Signing input used in conjunction with signature on the response
          to verify that the response has not been tampered with.  In this context
          the nonce is key value that is a manufactured input
          provided by the end user.";
@@ -274,7 +276,6 @@ module Cisco-IOS-XE-system-integrity-oper {
         "Enumerated input used to indicate the type of response required";
     }
   }
-
   grouping integrity-oper-data-group {
     description
       "Top level grouping of integrity oper data";
@@ -319,7 +320,6 @@ module Cisco-IOS-XE-system-integrity-oper {
       }
     }
   }
-
   container system-integrity-oper-data {
     config false;
     description
@@ -333,7 +333,12 @@ module Cisco-IOS-XE-system-integrity-oper {
       list integrity {
         key "nonce request";
         description
-          "Top level integrity container.";
+          "Top level integrity container consists of list indexed
+           by a compound integrity operational data key.
+           Security requirements dictate that on input the key
+           value must be fully specified both in terms of nonce
+           attribute and in terms of the request attribute in
+           order to retrieve a non-empty, signed response.";
         uses system-integrity-ios-xe-oper:integrity-oper-data-key;
         uses system-integrity-ios-xe-oper:integrity-oper-data-group;
       }
