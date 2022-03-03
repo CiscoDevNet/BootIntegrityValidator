@@ -1,0 +1,1 @@
+tests/test_files/*_crlf_eol.txt -text
