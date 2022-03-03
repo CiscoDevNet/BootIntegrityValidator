@@ -1,5 +1,5 @@
 __title__ = "BootIntegrityValidator"
-__version__ = "2.0.1"
+__version__ = "2.1.0"
 __author__ = "Jay Young"
 __author_email__ = "jyoungta@cisco.com"
 __copyright__ = "Copyright 2021, Cisco Systems, Inc"
