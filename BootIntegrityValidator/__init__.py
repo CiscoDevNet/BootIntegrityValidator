@@ -62,6 +62,7 @@ class BootIntegrityValidator(object):
         known_good_values_signature=None,
         custom_signing_cert=None,
         log_level=logging.ERROR,
+        ignore_kgv_match_failure=False
     ):
         """
         :param known_good_values: bytes - containing JSON that is the KGV
@@ -79,6 +80,8 @@ class BootIntegrityValidator(object):
         self._logger = logging.getLogger(__name__)
         self._logger.setLevel(log_level)
         self._logger.info("Initializing BootIntegrityValidator object")
+
+        self._ignore_kgv_match_failure = ignore_kgv_match_failure
 
         assert isinstance(
             known_good_values, bytes
@@ -676,6 +679,23 @@ class BootIntegrityValidator(object):
             for kgv in self._kgv["bulkHash"]:
                 if kgv.get("dtype", "") == dtype:
                     yield kgv
+        
+        def raise_kgv_mismatch_error(err_msg):
+            """
+            Depending on the 'ignore_kgv_match_failure' flag, either raises a KGV mismatch ValidationException
+            which stops further validation, or simply logs the mismatch but allows the validation to continue
+
+            This is a utility function. The actual KGV check happens before the invocation of this function
+
+            :param err_msg: str
+            :return Nothing if configured to ignore blocking further validation due to KGV mismatch
+
+            :raises ValidationException if supplied value not found in KGV entries, only if 'ignore_kgv_match_failure' flag is unset
+            """
+            if self._ignore_kgv_match_failure:
+                self._logger.error(f"Error: {err_msg}")
+            else:
+                raise BootIntegrityValidator.ValidationException(err_msg)
 
         def validate_hash(cli_version, cli_hash, kgvs):
             """
@@ -703,9 +723,7 @@ class BootIntegrityValidator(object):
                 if kgv.get("biv_hash", "") == cli_hash:
                     return
 
-            raise BootIntegrityValidator.ValidationException(
-                f"version with biv_hash {cli_hash} not found in list of valid hashes"
-            )
+            raise_kgv_mismatch_error(f"version with biv_hash {cli_hash} not found in list of valid hashes")
 
         def validate_all_os_hashes(os_hashes: typing.Tuple[str, str]):
             kgvs = kgvs_for_dtype(dtype="osimage")
@@ -719,9 +737,7 @@ class BootIntegrityValidator(object):
                         break
 
                 if not parent_kgv:
-                    raise BootIntegrityValidator.ValidationException(
-                        f"version with biv_hash {first_hash} not found in list of valid hashes"
-                    )
+                    raise_kgv_mismatch_error(f"version with biv_hash {first_hash} not found in list of valid hashes")
 
                 pkg_kgvs = {
                     kgv["filename"]: kgv.get("biv_hash") for kgv in parent_kgv["pkg"]
@@ -736,11 +752,9 @@ class BootIntegrityValidator(object):
 
             for given_pkg_filename, given_pkg_hash in os_hashes[1:]:
                 if given_pkg_filename not in pkg_kgvs:
-                    raise BootIntegrityValidator.ValidationException(
-                        f"package {given_pkg_filename} not found in list of valid hashes"
-                    )
+                    raise_kgv_mismatch_error(f"package {given_pkg_filename} not found in list of valid hashes")
                 if pkg_kgvs[given_pkg_filename] != given_pkg_hash:
-                    raise BootIntegrityValidator.ValidationException(
+                    raise_kgv_mismatch_error(
                         f"version {given_pkg_filename} with biv_hash {given_pkg_hash} doesn't match Known good value of {pkg_kgvs[given_pkg_filename]}"
                     )
 
