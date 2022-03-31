@@ -1,5 +1,3 @@
-import logging
-import re
 import pytest
 import gzip
 import pathlib
@@ -357,39 +355,4 @@ class TestBootIntegrityValidator(object):
             show_platform_integrity_cmd_output=show_plat.read(),
             show_platform_sudi_certificate_cmd_output=show_sudi.read()
         )
-    
-    def test_validate_ignore_kgv(self):
-        show_plat_cert = open(self.test_files / "isr4k_show_plat_sudi_cert.txt", "r")
-        show_plat_int = open(
-            self.test_files / "isr4k_show_plat_int_unsigned_multi_bad_hashes.txt", "r"
-        )
-        kgv = gzip.open(
-            self.test_files / "example_kgv.json.gzip",
-            "rb",
-        )
-        bi = BootIntegrityValidator(
-            known_good_values=kgv.read(),
-            log_level=logging.DEBUG,
-            ignore_kgv_match_failure=True
-        )
 
-        bivstdout = io.StringIO()
-        logger = logging.getLogger('BootIntegrityValidator')
-        handler = logging.StreamHandler(bivstdout)
-        logger.addHandler(handler)
-        bi.validate(
-            show_platform_sudi_certificate_cmd_output=show_plat_cert.read(),
-            show_platform_integrity_cmd_output=show_plat_int.read(),
-        )
-        stdout = bivstdout.getvalue()
-        logger.removeHandler(handler)
-
-        os_kgv_mismatch_log_re = re.search(
-            pattern=r"Error: version [\S]* with biv_hash [ABCDEF\d]* doesn't match Known good value of [ABCDEF\d]*", string=stdout
-        )
-        assert os_kgv_mismatch_log_re is not None
-        boot0_kgv_mismatch_log_re = re.search(
-            pattern=r"Error: version with biv_hash [ABCDEF\d]* not found in list of valid hashes", string=stdout
-        )
-        assert boot0_kgv_mismatch_log_re is not None
-        assert "BIV validation complete" in stdout
