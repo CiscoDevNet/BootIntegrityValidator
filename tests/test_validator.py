@@ -1,4 +1,3 @@
-import logging
 import re
 import pytest
 import gzip
@@ -368,28 +367,23 @@ class TestBootIntegrityValidator(object):
             "rb",
         )
         bi = BootIntegrityValidator(
-            known_good_values=kgv.read(),
-            log_level=logging.DEBUG,
-            ignore_kgv_match_failure=True
+            known_good_values=kgv.read()
         )
 
-        bivstdout = io.StringIO()
-        logger = logging.getLogger('BootIntegrityValidator')
-        handler = logging.StreamHandler(bivstdout)
-        logger.addHandler(handler)
-        bi.validate(
-            show_platform_sudi_certificate_cmd_output=show_plat_cert.read(),
-            show_platform_integrity_cmd_output=show_plat_int.read(),
-        )
-        stdout = bivstdout.getvalue()
-        logger.removeHandler(handler)
+        try:
+            bi.validate(
+                show_platform_sudi_certificate_cmd_output=show_plat_cert.read(),
+                show_platform_integrity_cmd_output=show_plat_int.read(),
+            )
+        except BootIntegrityValidator.ValidationException as e:
+            err_stacktrace = str(e)
+            os_kgv_mismatch_log_re = re.search(
+                pattern=r"Error: version [\S]* with biv_hash [A-F\d]* doesn't match Known good value of [A-F\d]*", string=err_stacktrace
+            )
+            assert os_kgv_mismatch_log_re is not None
+            
+            boot0_kgv_mismatch_log_re = re.search(
+                pattern=r"Error: version with biv_hash [ABCDEF\d]* not found in list of valid hashes", string=err_stacktrace
+            )
+            assert boot0_kgv_mismatch_log_re is not None
 
-        os_kgv_mismatch_log_re = re.search(
-            pattern=r"Error: version [\S]* with biv_hash [ABCDEF\d]* doesn't match Known good value of [ABCDEF\d]*", string=stdout
-        )
-        assert os_kgv_mismatch_log_re is not None
-        boot0_kgv_mismatch_log_re = re.search(
-            pattern=r"Error: version with biv_hash [ABCDEF\d]* not found in list of valid hashes", string=stdout
-        )
-        assert boot0_kgv_mismatch_log_re is not None
-        assert "BIV validation complete" in stdout
