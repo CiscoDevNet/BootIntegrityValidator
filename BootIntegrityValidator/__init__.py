@@ -770,6 +770,8 @@ class BootIntegrityValidator(object):
                     "Signature can't be validated because the SUDI certificates haven't been provided"
                 )
 
+        kgv_mismatches = []
+
         # Got the KGV for this platform
         # Check the boot0Version first
         boot_0_version_re = re.search(
@@ -802,12 +804,15 @@ class BootIntegrityValidator(object):
             )
 
         # Validate boot0Versions
-        validate_hash(
-            cli_version=boot_0_version_re.group(1),
-            cli_hash=boot_0_hash_re.group(1),
-            kgvs=kgvs_for_dtype(dtype="boot0"),
-        )
-        self._logger.info("Boot 0 validation successful")
+        try:
+            validate_hash(
+                cli_version=boot_0_version_re.group(1),
+                cli_hash=boot_0_hash_re.group(1),
+                kgvs=kgvs_for_dtype(dtype="boot0"),
+            )
+            self._logger.info("Boot 0 validation successful")
+        except BootIntegrityValidator.ValidationException as e:
+            kgv_mismatches.append(f"Error: {str(e)}")
 
         # Check the bootLoader second
         boot_loader_version_re = re.search(
@@ -839,12 +844,15 @@ class BootIntegrityValidator(object):
                 )
             )
 
-        validate_hash(
-            cli_version=boot_loader_version_re.group(1),
-            cli_hash=boot_loader_hash_re.group(1),
-            kgvs=kgvs_for_dtype(dtype="blr"),
-        )
-        self._logger.info("Boot Loader validation successful")
+        try:
+            validate_hash(
+                cli_version=boot_loader_version_re.group(1),
+                cli_hash=boot_loader_hash_re.group(1),
+                kgvs=kgvs_for_dtype(dtype="blr"),
+            )
+            self._logger.info("Boot Loader validation successful")
+        except BootIntegrityValidator.ValidationException as e:
+            kgv_mismatches.append(f"Error: {str(e)}")
 
         # Check the OS third but there might be 1 or many hashes
         self._logger.info("Attempt to extract OS Version and Hash")
@@ -869,19 +877,25 @@ class BootIntegrityValidator(object):
                     f"OS Hash '{filename}' '{hash}' is of len {len(hash)} should be one of {acceptable_biv_hash_lengths}"
                 )
 
-        if len(os_hashes) == 1:
-            # Single OS hash
-            validate_hash(
-                cli_version=os_version_re.group(1),
-                cli_hash=os_hashes[0][1],
-                kgvs=kgvs_for_dtype(dtype="osimage"),
-            )
-            self._logger.info("OS validation successful")
-            # Successfully validated
-        else:
-            # Multi hash to validate
-            validate_all_os_hashes(os_hashes=os_hashes)
+        try:
+            if len(os_hashes) == 1:
+                # Single OS hash
+                validate_hash(
+                    cli_version=os_version_re.group(1),
+                    cli_hash=os_hashes[0][1],
+                    kgvs=kgvs_for_dtype(dtype="osimage"),
+                )
+                self._logger.info("OS validation successful")
+                # Successfully validated
+            else:
+                # Multi hash to validate
+                validate_all_os_hashes(os_hashes=os_hashes)
+        except BootIntegrityValidator.ValidationException as e:
+            kgv_mismatches.append(f"Error: {str(e)}")
 
+        if len(kgv_mismatches) > 0:
+            raise BootIntegrityValidator.ValidationException("\n".join(kgv_mismatches))
+        
         self._logger.info(
             "Finished validating the 'show platform integrity' command output"
         )
