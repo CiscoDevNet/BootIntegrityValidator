@@ -377,6 +377,9 @@ class TestBootIntegrityValidator(object):
             )
         except BootIntegrityValidator.ValidationException as e:
             err_stacktrace = str(e)
+
+            assert len(e.individual_errors) == 2
+
             os_kgv_mismatch_log_re = re.search(
                 pattern=r"Error: version [\S]* with biv_hash [A-F\d]* doesn't match Known good value of [A-F\d]*", string=err_stacktrace
             )
