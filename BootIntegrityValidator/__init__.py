@@ -9,7 +9,7 @@ import base64
 import struct
 import json
 import pkg_resources
-import typing
+from typing import Optional, Collection, Tuple, Mapping
 import collections
 import copy
 import base64
@@ -35,6 +35,21 @@ class BootIntegrityValidator(object):
         """
         Validation was attempted but failed
         """
+
+        def __init__(
+            self, message: str, individual_errors: Optional[Collection] = None
+        ):
+            if individual_errors is None:
+                individual_errors = []
+
+            self.message = message
+            self.individual_errors = individual_errors
+
+        def __str__(self):
+            if self.individual_errors:
+                return f"Error: {self.message}.\n\n Total number of errors: {len(self.individual_errors)}"
+            else:
+                return f"Error: {self.message}"
 
     class InvalidFormat(BaseException):
         """
@@ -707,7 +722,7 @@ class BootIntegrityValidator(object):
                 f"version with biv_hash {cli_hash} not found in list of valid hashes"
             )
 
-        def validate_all_os_hashes(os_hashes: typing.Tuple[str, str]):
+        def validate_all_os_hashes(os_hashes: Tuple[str, str]):
             kgvs = kgvs_for_dtype(dtype="osimage")
             first_filename, first_hash = os_hashes[0]
             if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
@@ -770,6 +785,8 @@ class BootIntegrityValidator(object):
                     "Signature can't be validated because the SUDI certificates haven't been provided"
                 )
 
+        kgv_mismatches = []
+
         # Got the KGV for this platform
         # Check the boot0Version first
         boot_0_version_re = re.search(
@@ -802,12 +819,15 @@ class BootIntegrityValidator(object):
             )
 
         # Validate boot0Versions
-        validate_hash(
-            cli_version=boot_0_version_re.group(1),
-            cli_hash=boot_0_hash_re.group(1),
-            kgvs=kgvs_for_dtype(dtype="boot0"),
-        )
-        self._logger.info("Boot 0 validation successful")
+        try:
+            validate_hash(
+                cli_version=boot_0_version_re.group(1),
+                cli_hash=boot_0_hash_re.group(1),
+                kgvs=kgvs_for_dtype(dtype="boot0"),
+            )
+            self._logger.info("Boot 0 validation successful")
+        except BootIntegrityValidator.ValidationException as e:
+            kgv_mismatches.append(e)
 
         # Check the bootLoader second
         boot_loader_version_re = re.search(
@@ -839,12 +859,15 @@ class BootIntegrityValidator(object):
                 )
             )
 
-        validate_hash(
-            cli_version=boot_loader_version_re.group(1),
-            cli_hash=boot_loader_hash_re.group(1),
-            kgvs=kgvs_for_dtype(dtype="blr"),
-        )
-        self._logger.info("Boot Loader validation successful")
+        try:
+            validate_hash(
+                cli_version=boot_loader_version_re.group(1),
+                cli_hash=boot_loader_hash_re.group(1),
+                kgvs=kgvs_for_dtype(dtype="blr"),
+            )
+            self._logger.info("Boot Loader validation successful")
+        except BootIntegrityValidator.ValidationException as e:
+            kgv_mismatches.append(e)
 
         # Check the OS third but there might be 1 or many hashes
         self._logger.info("Attempt to extract OS Version and Hash")
@@ -869,25 +892,35 @@ class BootIntegrityValidator(object):
                     f"OS Hash '{filename}' '{hash}' is of len {len(hash)} should be one of {acceptable_biv_hash_lengths}"
                 )
 
-        if len(os_hashes) == 1:
-            # Single OS hash
-            validate_hash(
-                cli_version=os_version_re.group(1),
-                cli_hash=os_hashes[0][1],
-                kgvs=kgvs_for_dtype(dtype="osimage"),
+        try:
+            if len(os_hashes) == 1:
+                # Single OS hash
+                validate_hash(
+                    cli_version=os_version_re.group(1),
+                    cli_hash=os_hashes[0][1],
+                    kgvs=kgvs_for_dtype(dtype="osimage"),
+                )
+                self._logger.info("OS validation successful")
+                # Successfully validated
+            else:
+                # Multi hash to validate
+                validate_all_os_hashes(os_hashes=os_hashes)
+        except BootIntegrityValidator.ValidationException as e:
+            kgv_mismatches.append(e)
+
+        if kgv_mismatches:
+            raise BootIntegrityValidator.ValidationException(
+                message="Validation failed due to the following checks:\n"
+                + "\n".join(map(str, kgv_mismatches)),
+                individual_errors=kgv_mismatches,
             )
-            self._logger.info("OS validation successful")
-            # Successfully validated
-        else:
-            # Multi hash to validate
-            validate_all_os_hashes(os_hashes=os_hashes)
 
         self._logger.info(
             "Finished validating the 'show platform integrity' command output"
         )
 
     @staticmethod
-    def _extract_os_hashes(cmd_output: str) -> typing.Tuple[str, str]:
+    def _extract_os_hashes(cmd_output: str) -> Tuple[str, str]:
         """
         The OS hash output could be a single hash OR it could be a list of hashes
 
@@ -1306,7 +1339,7 @@ class BootIntegrityValidator(object):
     def _validate_v2_compliance(
         self,
         compliance: dict,
-        sudi_certs: typing.Mapping[Location, OpenSSL.crypto.X509],
+        sudi_certs: Mapping[Location, OpenSSL.crypto.X509],
     ) -> dict:
 
         compliance_info = {}
@@ -1323,7 +1356,9 @@ class BootIntegrityValidator(object):
             header = struct.pack(">QI", nonce, signature["version"])
             capability_bytes = b""
             for capability in compliance["capability"]:
-                capability_bytes += capability["attribute"].encode() + capability["value"].encode()
+                capability_bytes += (
+                    capability["attribute"].encode() + capability["value"].encode()
+                )
             data_to_be_hashed = header + capability_bytes
             calculated_hash = SHA256.new(data=data_to_be_hashed)
 
@@ -1351,7 +1386,7 @@ class BootIntegrityValidator(object):
         self,
         measurements: dict,
         compliance_info: dict,
-        sudi_certs: typing.Mapping[Location, OpenSSL.crypto.X509],
+        sudi_certs: Mapping[Location, OpenSSL.crypto.X509],
     ) -> None:
         self._logger.info("Start v2 measure validation")
 
@@ -1396,7 +1431,7 @@ class BootIntegrityValidator(object):
                 f"version with biv_hash {hash_value} not found in list of valid hashes"
             )
 
-        def validate_all_os_hashes(os_hashes: typing.List[typing.Tuple[str, str]]):
+        def validate_all_os_hashes(os_hashes: Collection[Tuple[str, str]]):
             kgvs = kgvs_for_dtype(dtype="osimage")
             first_filename, first_hash = os_hashes[0]
             if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
@@ -1541,32 +1576,51 @@ class BootIntegrityValidator(object):
             (boot0_measure, *bootloader_measures) = sorted(
                 measurement["boot-loader"], key=lambda s: s["stage"]
             )
-            # Validate boot0
-            validate_hash(
-                version=boot0_measure["version"],
-                hash_value=boot0_measure["hash"],
-                kgvs=kgvs_for_dtype(dtype="boot0"),
-            )
 
-            # Validate remaining bootloaders
-            for bootloader_measure in bootloader_measures:
-                validate_hash(
-                    version=bootloader_measure["version"],
-                    hash_value=bootloader_measure["hash"],
-                    kgvs=kgvs_for_dtype(dtype="blr"),
-                )
+            kgv_mismatches = []
 
-            os_measures = measurement["operating-system"]["package-integrity"]
-            if len(os_measures) == 1:
-                # Single OS hash
+            try:
+                # Validate boot0
                 validate_hash(
-                    version=os_measures[0]["version"],
-                    hash_value=os_measures[0]["hash"],
-                    kgvs=kgvs_for_dtype(dtype="osimage"),
+                    version=boot0_measure["version"],
+                    hash_value=boot0_measure["hash"],
+                    kgvs=kgvs_for_dtype(dtype="boot0"),
                 )
-            else:
-                validate_all_os_hashes(
-                    os_hashes=([(h["name"], h["hash"]) for h in os_measures])
+            except BootIntegrityValidator.ValidationException as e:
+                kgv_mismatches.append(e)
+
+            try:
+                # Validate remaining bootloaders
+                for bootloader_measure in bootloader_measures:
+                    validate_hash(
+                        version=bootloader_measure["version"],
+                        hash_value=bootloader_measure["hash"],
+                        kgvs=kgvs_for_dtype(dtype="blr"),
+                    )
+            except BootIntegrityValidator.ValidationException as e:
+                kgv_mismatches.append(e)
+
+            try:
+                os_measures = measurement["operating-system"]["package-integrity"]
+                if len(os_measures) == 1:
+                    # Single OS hash
+                    validate_hash(
+                        version=os_measures[0]["version"],
+                        hash_value=os_measures[0]["hash"],
+                        kgvs=kgvs_for_dtype(dtype="osimage"),
+                    )
+                else:
+                    validate_all_os_hashes(
+                        os_hashes=([(h["name"], h["hash"]) for h in os_measures])
+                    )
+            except BootIntegrityValidator.ValidationException as e:
+                kgv_mismatches.append(e)
+
+            if kgv_mismatches:
+                raise BootIntegrityValidator.ValidationException(
+                    message="Validation (v2) failed with the following errors:\n"
+                    + "\n".join(map(str, kgv_mismatches)),
+                    individual_errors=kgv_mismatches,
                 )
 
             # Location successfully validated
