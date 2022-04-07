@@ -1295,6 +1295,7 @@ class BootIntegrityValidator(object):
         for location in trust_chain[
             "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data"
         ]["location"]:
+            self._logger.debug(f"SID:{session_id} - Working on {location}")
             location_dict = copy.deepcopy(location)
             del location_dict["integrity"]
             trust_chain = location["integrity"][0]["trust-chain"]
@@ -1384,12 +1385,18 @@ class BootIntegrityValidator(object):
         self,
         compliance: dict,
         sudi_certs: Mapping[Location, OpenSSL.crypto.X509],
+        session_id: int = -1
     ) -> dict:
+
+        self._logger.info(
+            f"SID:{session_id} - Starting BIV v2 validation - Compliance"
+        )
 
         compliance_info = {}
         for location in compliance[
             "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data"
         ]["location"]:
+            self._logger.debug(f"SID:{session_id} - Working on {location}")
             location_dict = copy.deepcopy(location)
             del location_dict["integrity"]
             loc = BootIntegrityValidator.Location(**location_dict)
