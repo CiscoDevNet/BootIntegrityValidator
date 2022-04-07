@@ -3,23 +3,22 @@ __author_email__ = "jyoungta@cisco.com"
 __copyright__ = "Copyright (c) 2021 Cisco Systems, Inc."
 __license__ = "MIT"
 
-import re
-import logging
 import base64
-import struct
-import json
-import pkg_resources
-from typing import Optional, Collection, Tuple, Mapping
 import collections
 import copy
-import base64
+import itertools
+import json
+import logging
+import re
+import struct
+from typing import Collection, Mapping, Optional, Tuple
 
 import OpenSSL
 import OpenSSL.crypto
-
+import pkg_resources
+from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
-from Crypto.Hash import SHA256
 
 
 class BootIntegrityValidator(object):
@@ -104,6 +103,9 @@ class BootIntegrityValidator(object):
         ), "known_good_value_signature should be None or bytes, was %r" % type(
             known_good_values_signature
         )
+        # Used for generating unique session-ids
+        self._session_id = itertools.count(start=1, step=1)
+
         # Boot strap Trusted Root and then validate Sub-CAs
 
         self._trusted_store = None
@@ -350,14 +352,14 @@ class BootIntegrityValidator(object):
         self,
         show_platform_integrity_cmd_output: str,
         show_platform_sudi_certificate_cmd_output: Optional[str] = None,
-    ) -> None:
+    ) -> int:
         """
         Takes the CLI output from 'show platform integrity' and validates the output against the KGV
         If show_platform_sudi_certificate_cmd_output is provided validate the signature on the command itself
 
         :param show_platform_integrity_cmd_output: string of cli output
         :param show_platform_sudi_certificate_cmd_output: string of cli output
-        :return: None if successfully validated
+        :return: int of unique session_id if successfully validated (correlates to the session_id within the logs)
         :raises: ValidationError-
                     - if version is in kgv but hashes don't match
                     - if signature on cli is bad
@@ -365,7 +367,9 @@ class BootIntegrityValidator(object):
         :raises: ProductNotFound - Hardware platform not found in KGV
         """
 
-        self._logger.info("Starting BIV validation")
+        session_id = next(self._session_id)
+
+        self._logger.info(f"SID:{session_id} - Starting BIV validation")
         assert isinstance(
             show_platform_integrity_cmd_output, str
         ), "show_platform_integrity_cmd_output should be a string type was %r" % type(
@@ -382,20 +386,25 @@ class BootIntegrityValidator(object):
         if show_platform_sudi_certificate_cmd_output:
             # Validate the device certificate and signature on cli output if present
             device_cert_obj = self._validate_device_cert(
-                cmd_output=show_platform_sudi_certificate_cmd_output
+                cmd_output=show_platform_sudi_certificate_cmd_output,
+                session_id=session_id,
             )
         else:
             self._logger.info(
-                "'show platform certificate' command output not provided.  Skipping validation of the signature"
+                f"SID:{session_id} - 'show platform certificate' command output not provided.  Skipping validation of the signature"
             )
 
         self._validate_show_platform_integrity_cmd_output(
             cmd_output=show_platform_integrity_cmd_output,
             device_cert_object=device_cert_obj,
+            session_id=session_id,
         )
-        self._logger.info("BIV validation complete")
+        self._logger.info(f"SID:{session_id} - BIV validation complete")
+        return session_id
 
-    def _validate_device_cert(self, cmd_output: str) -> OpenSSL.crypto.X509:
+    def _validate_device_cert(
+        self, cmd_output: str, session_id: int = -1
+    ) -> OpenSSL.crypto.X509:
         """
         Validate the device certificate against the Cisco CA and the signature if present
 
@@ -426,7 +435,9 @@ class BootIntegrityValidator(object):
         :return:
         """
 
-        self._logger.info("Processing the 'show platform sudi certificate' output")
+        self._logger.info(
+            f"SID:{session_id} - Processing the 'show platform sudi certificate' output"
+        )
         assert isinstance(
             cmd_output, str
         ), f"cmd_output is not an string type: {type(cmd_output)!r}"
@@ -466,7 +477,7 @@ class BootIntegrityValidator(object):
 
         if not any([same_cert(x, ca_cert_obj) for x in [crca2048, crca2099]]):
             self._logger.error(
-                "Cisco Root CA in cmd_output doesn't match a known good Cisco Root CA"
+                f"SID:{session_id} - Cisco Root CA in cmd_output doesn't match a known good Cisco Root CA"
             )
             raise BootIntegrityValidator.ValidationException(
                 "Cisco Root CA in cmd_output doesn't match known good Cisco Root CA"
@@ -479,7 +490,7 @@ class BootIntegrityValidator(object):
         )
         if not any([same_cert(x, cisco_sudi_ca_obj) for x in [act2sudica, hasudi]]):
             self._logger.error(
-                "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
+                f"SID:{session_id} - Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
             )
             raise BootIntegrityValidator.ValidationException(
                 "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
@@ -493,37 +504,43 @@ class BootIntegrityValidator(object):
 
         # validate Device ID Certificate
         try:
-            self._logger.info("Validating device certificate against Cisco CAs")
+            self._logger.info(
+                f"SID:{session_id} - Validating device certificate against Cisco CAs"
+            )
             store_ctx = OpenSSL.crypto.X509StoreContext(
                 store=self._trusted_store, certificate=device_sudi_obj
             )
             store_ctx.verify_certificate()
         except OpenSSL.crypto.X509StoreContextError as e:
             self._logger.error(
-                "Device ID Certificate failed validation against Cisco CA Roots"
+                f"SID:{session_id} - Device ID Certificate failed validation against Cisco CA Roots"
             )
             raise BootIntegrityValidator.ValidationException(
                 "Device ID Certificate failed validation against Cisco CA Roots"
             )
 
-        self._logger.info("Device ID certificate successfully validated")
+        self._logger.info(
+            f"SID:{session_id} - Device ID certificate successfully validated"
+        )
         # Validate signature if present
         if "Signature" in cmd_output:
-            self._logger.info("Signature of output present.  Attempt to validate")
+            self._logger.info(
+                f"SID:{session_id} - Signature of output present.  Attempt to validate"
+            )
             self._validate_show_platform_sudi_output(
                 cmd_output=cmd_output,
                 ca_cert_object=ca_cert_obj,
                 sub_ca_cert_object=cisco_sudi_ca_obj,
                 device_cert_object=device_sudi_obj,
             )
-            self._logger.info("Signature of output valid.")
+            self._logger.info(f"SID:{session_id} - Signature of output valid.")
         else:
             self._logger.info(
-                "Signature of the 'show platform sudi certificate' command not present, skipping validation"
+                f"SID:{session_id} - Signature of the 'show platform sudi certificate' command not present, skipping validation"
             )
 
         self._logger.info(
-            "Processing the 'show platform sudi certificate' output complete"
+            f"SID:{session_id} - Processing the 'show platform sudi certificate' output complete"
         )
         return device_sudi_obj
 
@@ -636,7 +653,10 @@ class BootIntegrityValidator(object):
             )
 
     def _validate_show_platform_integrity_cmd_output(
-        self, cmd_output: str, device_cert_object: Optional[OpenSSL.crypto.X509] = None
+        self,
+        cmd_output: str,
+        device_cert_object: Optional[OpenSSL.crypto.X509] = None,
+        session_id: int = -1,
     ) -> None:
         """
         Takes show platform integrity sign nonce xxx output and validates the following hashes against the values in the
@@ -672,7 +692,7 @@ class BootIntegrityValidator(object):
         """
 
         self._logger.info(
-            "Start validating the 'show platform integrity' command output"
+            f"SID:{session_id} - Start validating the 'show platform integrity' command output"
         )
         assert isinstance(
             cmd_output, str
@@ -681,9 +701,11 @@ class BootIntegrityValidator(object):
         platform_re = re.search(r"Platform:\s+(\S+)", cmd_output)
         if platform_re:
             cli_platform = platform_re.group(1)
-            self._logger.debug("Platform is %s", cli_platform)
+            self._logger.debug(f"SID:{session_id} - Platform is %s", cli_platform)
         else:
-            self._logger.error("Unable to extract the Platform type from the output")
+            self._logger.error(
+                f"SID:{session_id} - Unable to extract the Platform type from the output"
+            )
             raise BootIntegrityValidator.MissingInfo("Platform not found in cmd_output")
 
         def kgvs_for_dtype(dtype):
@@ -770,7 +792,7 @@ class BootIntegrityValidator(object):
         if "Signature" in cmd_output:
             if device_cert_object:
                 self._logger.info(
-                    "'show platform integrity' command has signature.  Attempt to validate"
+                    f"SID:{session_id} - 'show platform integrity' command has signature.  Attempt to validate"
                 )
                 try:
                     self._validate_show_platform_integrity_cmd_output_signature(
@@ -778,13 +800,15 @@ class BootIntegrityValidator(object):
                         device_cert_object=device_cert_object,
                     )
                 except BootIntegrityValidator.ValidationException as e:
-                    self._logger.error("Validation failed", exc_info=True)
+                    self._logger.error(
+                        f"SID:{session_id} - Validation failed", exc_info=True
+                    )
                     raise
 
-                self._logger.info("Validation succeeded")
+                self._logger.info(f"SID:{session_id} - Validation succeeded")
             else:
                 self._logger.error(
-                    "Can't validate the 'show platform integrity' command signature as the 'show platform sudi certificate' command wasn't provided"
+                    f"SID:{session_id} - Can't validate the 'show platform integrity' command signature as the 'show platform sudi certificate' command wasn't provided"
                 )
                 raise BootIntegrityValidator.MissingInfo(
                     "Signature can't be validated because the SUDI certificates haven't been provided"
@@ -801,7 +825,9 @@ class BootIntegrityValidator(object):
             pattern=r"Boot 0 Hash:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
 
-        self._logger.info("Attempting to extract Boot 0 Version and Hash")
+        self._logger.info(
+            f"SID:{session_id} - Attempting to extract Boot 0 Version and Hash"
+        )
         if boot_0_hash_re is None or boot_0_version_re is None:
             raise BootIntegrityValidator.MissingInfo(
                 "'Boot 0 Version' or 'Boot 0 Hash' not found in cmd_output"
@@ -830,7 +856,7 @@ class BootIntegrityValidator(object):
                 cli_hash=boot_0_hash_re.group(1),
                 kgvs=kgvs_for_dtype(dtype="boot0"),
             )
-            self._logger.info("Boot 0 validation successful")
+            self._logger.info(f"SID:{session_id} - Boot 0 validation successful")
         except BootIntegrityValidator.ValidationException as e:
             kgv_mismatches.append(e)
 
@@ -842,7 +868,9 @@ class BootIntegrityValidator(object):
             pattern=r"Boot Loader Hash:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
 
-        self._logger.info("Attempting to extract Boot Loader Version and Hash")
+        self._logger.info(
+            f"SID:{session_id} - Attempting to extract Boot Loader Version and Hash"
+        )
         if boot_loader_hash_re is None or boot_loader_version_re is None:
             raise BootIntegrityValidator.MissingInfo(
                 "'Boot Loader Version' or 'Boot Loader Hash' not found in cmd_output"
@@ -870,12 +898,12 @@ class BootIntegrityValidator(object):
                 cli_hash=boot_loader_hash_re.group(1),
                 kgvs=kgvs_for_dtype(dtype="blr"),
             )
-            self._logger.info("Boot Loader validation successful")
+            self._logger.info(f"SID:{session_id} - Boot Loader validation successful")
         except BootIntegrityValidator.ValidationException as e:
             kgv_mismatches.append(e)
 
         # Check the OS third but there might be 1 or many hashes
-        self._logger.info("Attempt to extract OS Version and Hash")
+        self._logger.info(f"SID:{session_id} - Attempt to extract OS Version and Hash")
         os_version_re = re.search(
             pattern=r"OS Version:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
@@ -905,7 +933,7 @@ class BootIntegrityValidator(object):
                     cli_hash=os_hashes[0][1],
                     kgvs=kgvs_for_dtype(dtype="osimage"),
                 )
-                self._logger.info("OS validation successful")
+                self._logger.info(f"SID:{session_id} - OS validation successful")
                 # Successfully validated
             else:
                 # Multi hash to validate
@@ -921,7 +949,7 @@ class BootIntegrityValidator(object):
             )
 
         self._logger.info(
-            "Finished validating the 'show platform integrity' command output"
+            f"SID:{session_id} - Finished validating the 'show platform integrity' command output"
         )
 
     @staticmethod
@@ -1116,7 +1144,7 @@ class BootIntegrityValidator(object):
         show_system_integrity_trust_chain_cmd_output: str,
         show_system_integrity_compliance_cmd_output: str,
         show_system_integrity_measurement_cmd_output: str,
-    ) -> None:
+    ) -> int:
         """
         Takes the cli output of
             - `show system integrity all trust_chain nonce <INT>`
@@ -1131,8 +1159,9 @@ class BootIntegrityValidator(object):
             - Validates the measurements against the Known-Good-Values (KGV)
 
         """
+        session_id = next(self._session_id)
 
-        self._logger.info("Starting BIV v2 validation - CLI")
+        self._logger.info(f"SID:{session_id} - Starting BIV v2 validation - CLI")
         if not isinstance(show_system_integrity_trust_chain_cmd_output, str):
             raise TypeError(
                 f"'show_system_integrity_trust_chain_cmd_output' should be a str type but is {type(show_system_integrity_trust_chain_cmd_output)}"
@@ -1165,14 +1194,16 @@ class BootIntegrityValidator(object):
             show_system_integrity_trust_chain_json=trust_chain_json,
             show_system_integrity_compliance_json=compliance_json,
             show_system_integrity_measurement_json=measurement_json,
+            session_id=session_id,
         )
+        return session_id
 
     def validate_v2_xml(
         self,
         show_system_integrity_trust_chain_xml: str,
         show_system_integrity_compliance_xml: str,
         show_system_integrity_measurement_xml: str,
-    ) -> None:
+    ) -> int:
         """
         Takes the xml data model for the Cisco-IOS-XE-system-integrity-oper:system-integrity-ios-xe-oper yang models
 
@@ -1181,7 +1212,9 @@ class BootIntegrityValidator(object):
             - Transforms the xml data instances int json data instances
             - Calls the `validate_v2_json` method
         """
-        self._logger.info("Starting BIV v2 validation - XML")
+        session_id = next(self._session_id)
+
+        self._logger.info(f"SID:{session_id} - Starting BIV v2 validation - XML")
         if not isinstance(show_system_integrity_trust_chain_xml, str):
             raise TypeError(
                 f"'show_system_integrity_trust_chain_xml' should be a str type but is {type(show_system_integrity_trust_chain_xml)}"
@@ -1226,9 +1259,11 @@ class BootIntegrityValidator(object):
             show_system_integrity_trust_chain_json=trust_chain_json,
             show_system_integrity_compliance_json=compliance_json,
             show_system_integrity_measurement_json=measurement_json,
+            session_id=session_id,
         )
+        return session_id
 
-    def _validate_v2_trust_chain(self, trust_chain: dict) -> dict:
+    def _validate_v2_trust_chain(self, trust_chain: dict, session_id: int = -1) -> dict:
         """
         Validate the trust chain against the Cisco CA and validate the signature
         using the supplied SUDI certs.
@@ -1239,7 +1274,9 @@ class BootIntegrityValidator(object):
         :returns: dict - key is a `Location`, value is a `OpenSSL.x509`
 
         """
-        self._logger.info("Starting BIV v2 validation - Trust Chain Validation")
+        self._logger.info(
+            f"SID:{session_id} - Starting BIV v2 validation - Trust Chain Validation"
+        )
         crca2048 = self._cert_obj["crca2048"]
         act2sudica = self._cert_obj["ACT2SUDICA"]
         crca2099 = self._cert_obj["crca2099"]
@@ -1273,7 +1310,7 @@ class BootIntegrityValidator(object):
             )
             if not any([same_cert(x, ca_cert_obj) for x in [crca2048, crca2099]]):
                 self._logger.error(
-                    "Cisco Root CA in cmd_output doesn't match a known good Cisco Root CA"
+                    f"SID:{session_id} - Cisco Root CA in cmd_output doesn't match a known good Cisco Root CA"
                 )
                 raise BootIntegrityValidator.ValidationException(
                     "Cisco Root CA in cmd_output doesn't match known good Cisco Root CA"
@@ -1287,7 +1324,7 @@ class BootIntegrityValidator(object):
             )
             if not any([same_cert(x, cisco_sudi_obj)] for x in [act2sudica, hasudi]):
                 self._logger.error(
-                    "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
+                    f"SID:{session_id} - Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
                 )
                 raise BootIntegrityValidator.ValidationException(
                     "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA"
@@ -1301,7 +1338,9 @@ class BootIntegrityValidator(object):
             )
             # validate Device ID Certificate
             try:
-                self._logger.info("Validating device certificate against Cisco CAs")
+                self._logger.info(
+                    f"SID:{session_id} - Validating device certificate against Cisco CAs"
+                )
                 store_ctx = OpenSSL.crypto.X509StoreContext(
                     store=self._trusted_store, certificate=device_sudi_obj
                 )
@@ -1310,7 +1349,7 @@ class BootIntegrityValidator(object):
                 sudi_certs[loc] = {"nonce": nonce, "cert_obj": device_sudi_obj}
             except OpenSSL.crypto.X509StoreContextError:
                 self._logger.error(
-                    "Device ID Certificate failed validation against Cisco CA Roots"
+                    f"SID:{session_id} - Device ID Certificate failed validation against Cisco CA Roots"
                 )
                 raise BootIntegrityValidator.ValidationException(
                     "Device ID Certificate failed validation against Cisco CA Roots"
@@ -1392,8 +1431,9 @@ class BootIntegrityValidator(object):
         measurements: dict,
         compliance_info: dict,
         sudi_certs: Mapping[Location, OpenSSL.crypto.X509],
+        session_id: int = -1,
     ) -> None:
-        self._logger.info("Start v2 measure validation")
+        self._logger.info(f"SID:{session_id} - Start v2 measure validation")
 
         def kgvs_for_dtype(dtype):
             if "bulkHash" not in self._kgv or not isinstance(
@@ -1476,7 +1516,7 @@ class BootIntegrityValidator(object):
         for location in measurements[
             "Cisco-IOS-XE-system-integrity-oper:system-integrity-oper-data"
         ]["location"]:
-            self._logger.debug(f"Working on {location}")
+            self._logger.debug(f"SID:{session_id} - Working on {location}")
             location_dict = copy.deepcopy(location)
             del location_dict["integrity"]
             loc = BootIntegrityValidator.Location(**location_dict)
@@ -1558,7 +1598,7 @@ class BootIntegrityValidator(object):
             # within the KGV
 
             self._logger.debug(
-                f"Succesfully validated the cryptographic output provided for {loc}"
+                f"SID:{session_id} - Succesfully validated the cryptographic output provided for {loc}"
             )
 
             # First stage of boot hashes = boot0
@@ -1637,7 +1677,8 @@ class BootIntegrityValidator(object):
         show_system_integrity_trust_chain_json: dict,
         show_system_integrity_compliance_json: dict,
         show_system_integrity_measurement_json: dict,
-    ) -> None:
+        session_id: int = -1,
+    ) -> int:
         """
         Takes the json data model for the Cisco-IOS-XE-system-integrity-oper:system-integrity-ios-xe-oper yang models
 
@@ -1647,8 +1688,15 @@ class BootIntegrityValidator(object):
             - Validates each of the CLI outputs against the signatures given
             - Validates the measurements against the Known-Good-Values (KGV)
 
+        Returns: int of the unique session_id of the validation attempt
+
         """
-        self._logger.info("Starting BIV v2 validation - JSON")
+        if not isinstance(session_id, int):
+            raise TypeError(f"'session_id' was a '{type(session_id)}' expected a 'int")
+        if session_id < 1:
+            session_id = next(self._session_id)
+
+        self._logger.info(f"SID:{session_id} - Starting BIV v2 validation - JSON")
         if not isinstance(show_system_integrity_trust_chain_json, dict):
             raise TypeError(
                 f"'show_system_integrity_trust_chain_json' was a '{type(show_system_integrity_trust_chain_json)}' expected a 'dict'"
@@ -1693,15 +1741,20 @@ class BootIntegrityValidator(object):
         # Now the data model is 'shaped' correctly we need to validate the actual data
         # Validate each sudi certificate from each location
         sudi_certs = self._validate_v2_trust_chain(
-            trust_chain=show_system_integrity_trust_chain_json
+            trust_chain=show_system_integrity_trust_chain_json, session_id=session_id
         )
 
         compliance_info = self._validate_v2_compliance(
-            compliance=show_system_integrity_compliance_json, sudi_certs=sudi_certs
+            compliance=show_system_integrity_compliance_json,
+            sudi_certs=sudi_certs,
+            session_id=session_id,
         )
 
         self._validate_v2_measurement(
             measurements=show_system_integrity_measurement_json,
             compliance_info=compliance_info,
             sudi_certs=sudi_certs,
+            session_id=session_id,
         )
+
+        return session_id

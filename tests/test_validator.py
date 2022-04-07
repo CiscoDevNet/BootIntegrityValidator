@@ -229,7 +229,8 @@ class TestBootIntegrityValidator(object):
         show_plat = open(self.test_files / "isr4k_show_plat_int.txt", "r")
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
-        bi.validate(show_platform_integrity_cmd_output=show_plat.read())
+        session_id = bi.validate(show_platform_integrity_cmd_output=show_plat.read())
+        assert isinstance(session_id, int) and session_id >= 1
 
     def test_validate_2099(self):
         show_plat_int = open(
@@ -295,11 +296,12 @@ class TestBootIntegrityValidator(object):
             self.test_files / "v2" / "cli_valid_multiple_measure.txt"
         ).read()
 
-        bi.validate_v2_cli(
+        session_id = bi.validate_v2_cli(
             show_system_integrity_trust_chain_cmd_output=trust_chain_cli,
             show_system_integrity_compliance_cmd_output=compliance_cli,
             show_system_integrity_measurement_cmd_output=measurement_cli,
         )
+        assert isinstance(session_id, int) and session_id >= 1
 
     def test_validate_v2_xml(self):
         kgv = open(
@@ -318,11 +320,12 @@ class TestBootIntegrityValidator(object):
             self.test_files / "v2" / "netconf_valid_measurement.xml"
         ).read()
 
-        bi.validate_v2_xml(
+        session_id = bi.validate_v2_xml(
             show_system_integrity_trust_chain_xml=trust_chain_xml,
             show_system_integrity_compliance_xml=compliance_xml,
             show_system_integrity_measurement_xml=measurement_xml,
         )
+        assert isinstance(session_id, int) and session_id >= 1
 
     def test_validate_v2_json(self):
         kgv = open(
@@ -341,11 +344,12 @@ class TestBootIntegrityValidator(object):
             open(self.test_files / "v2" / "restconf_valid_measurement.json")
         )
 
-        bi.validate_v2_json(
+        session_id = bi.validate_v2_json(
             show_system_integrity_trust_chain_json=trust_chain_json,
             show_system_integrity_compliance_json=compliance_json,
             show_system_integrity_measurement_json=measurement_json,
         )
+        assert isinstance(session_id, int) and session_id >= 1
     
     def test_validate_crlf_eol(self):
         show_plat = io.open(self.test_files / "show_plat_int_crlf_eol.txt", 'rt', newline='')
