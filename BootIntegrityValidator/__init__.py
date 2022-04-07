@@ -15,6 +15,7 @@ import copy
 import base64
 
 import OpenSSL
+import OpenSSL.crypto
 
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
@@ -347,9 +348,9 @@ class BootIntegrityValidator(object):
 
     def validate(
         self,
-        show_platform_integrity_cmd_output,
-        show_platform_sudi_certificate_cmd_output=None,
-    ):
+        show_platform_integrity_cmd_output: str,
+        show_platform_sudi_certificate_cmd_output: Optional[str] = None,
+    ) -> None:
         """
         Takes the CLI output from 'show platform integrity' and validates the output against the KGV
         If show_platform_sudi_certificate_cmd_output is provided validate the signature on the command itself
@@ -377,9 +378,10 @@ class BootIntegrityValidator(object):
             % type(show_platform_sudi_certificate_cmd_output)
         )
 
+        device_cert_obj = None
         if show_platform_sudi_certificate_cmd_output:
             # Validate the device certificate and signature on cli output if present
-            self._validate_device_cert(
+            device_cert_obj = self._validate_device_cert(
                 cmd_output=show_platform_sudi_certificate_cmd_output
             )
         else:
@@ -388,11 +390,12 @@ class BootIntegrityValidator(object):
             )
 
         self._validate_show_platform_integrity_cmd_output(
-            cmd_output=show_platform_integrity_cmd_output
+            cmd_output=show_platform_integrity_cmd_output,
+            device_cert_object=device_cert_obj,
         )
         self._logger.info("BIV validation complete")
 
-    def _validate_device_cert(self, cmd_output):
+    def _validate_device_cert(self, cmd_output: str) -> OpenSSL.crypto.X509:
         """
         Validate the device certificate against the Cisco CA and the signature if present
 
@@ -495,7 +498,6 @@ class BootIntegrityValidator(object):
                 store=self._trusted_store, certificate=device_sudi_obj
             )
             store_ctx.verify_certificate()
-            self._cert_obj["device"] = device_sudi_obj
         except OpenSSL.crypto.X509StoreContextError as e:
             self._logger.error(
                 "Device ID Certificate failed validation against Cisco CA Roots"
@@ -523,6 +525,7 @@ class BootIntegrityValidator(object):
         self._logger.info(
             "Processing the 'show platform sudi certificate' output complete"
         )
+        return device_sudi_obj
 
     @staticmethod
     def _validate_show_platform_sudi_output(
@@ -632,7 +635,9 @@ class BootIntegrityValidator(object):
                 "Signature on show platform sudi output failed validation"
             )
 
-    def _validate_show_platform_integrity_cmd_output(self, cmd_output):
+    def _validate_show_platform_integrity_cmd_output(
+        self, cmd_output: str, device_cert_object: Optional[OpenSSL.crypto.X509] = None
+    ) -> None:
         """
         Takes show platform integrity sign nonce xxx output and validates the following hashes against the values in the
         known_good_value dictionary
@@ -763,14 +768,14 @@ class BootIntegrityValidator(object):
         acceptable_biv_hash_lengths = (64, 128)
 
         if "Signature" in cmd_output:
-            if "device" in self._cert_obj:
+            if device_cert_object:
                 self._logger.info(
                     "'show platform integrity' command has signature.  Attempt to validate"
                 )
                 try:
                     self._validate_show_platform_integrity_cmd_output_signature(
                         cmd_output=cmd_output,
-                        device_cert_object=self._cert_obj["device"],
+                        device_cert_object=device_cert_object,
                     )
                 except BootIntegrityValidator.ValidationException as e:
                     self._logger.error("Validation failed", exc_info=True)
@@ -975,8 +980,8 @@ class BootIntegrityValidator(object):
 
     @staticmethod
     def _validate_show_platform_integrity_cmd_output_signature(
-        cmd_output, device_cert_object
-    ):
+        cmd_output: str, device_cert_object: OpenSSL.crypto.X509
+    ) -> None:
         """
 
         :param cmd_output: str of output
