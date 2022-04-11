@@ -45,7 +45,7 @@ class BootIntegrityValidator(object):
         def __init__(
             self, message: str, individual_errors: Optional[Collection] = None, session_id: int = -1
         ):
-            super(message, session_id)
+            super().__init__(message, session_id)
             if individual_errors is None:
                 individual_errors = []
 
@@ -65,7 +65,7 @@ class BootIntegrityValidator(object):
         def __init__(
             self, message: str, session_id: int = -1
         ):
-            super(message, session_id)
+            super().__init__(message, session_id)
 
     class ProductNotFound(BaseException):
         """
@@ -75,7 +75,7 @@ class BootIntegrityValidator(object):
         def __init__(
             self, message: str, session_id: int = -1
         ):
-            super(message, session_id)
+            super().__init__(message, session_id)
 
     class MissingInfo(BaseException):
         """
@@ -86,7 +86,7 @@ class BootIntegrityValidator(object):
         def __init__(
             self, message: str, session_id: int = -1
         ):
-            super(message, session_id)
+            super().__init__(message, session_id)
 
 
     Location = collections.namedtuple(
