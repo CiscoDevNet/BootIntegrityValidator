@@ -31,9 +31,7 @@ class BootIntegrityValidator(object):
         Base Exception for all exceptions this class will raise
         """
 
-        def __init__(
-            self, message: str, session_id: int = -1
-        ):
+        def __init__(self, message: str, session_id: int = -1):
             self.session_id = session_id
             self.message = message
 
@@ -43,7 +41,10 @@ class BootIntegrityValidator(object):
         """
 
         def __init__(
-            self, message: str, individual_errors: Optional[Collection] = None, session_id: int = -1
+            self,
+            message: str,
+            individual_errors: Optional[Collection] = None,
+            session_id: int = -1,
         ):
             super().__init__(message, session_id)
             if individual_errors is None:
@@ -62,9 +63,7 @@ class BootIntegrityValidator(object):
         known_good_values is not structured correctly
         """
 
-        def __init__(
-            self, message: str, session_id: int = -1
-        ):
+        def __init__(self, message: str, session_id: int = -1):
             super().__init__(message, session_id)
 
     class ProductNotFound(BaseException):
@@ -72,9 +71,7 @@ class BootIntegrityValidator(object):
         Product Not Found
         """
 
-        def __init__(
-            self, message: str, session_id: int = -1
-        ):
+        def __init__(self, message: str, session_id: int = -1):
             super().__init__(message, session_id)
 
     class MissingInfo(BaseException):
@@ -83,11 +80,8 @@ class BootIntegrityValidator(object):
         Like the hash output
         """
 
-        def __init__(
-            self, message: str, session_id: int = -1
-        ):
+        def __init__(self, message: str, session_id: int = -1):
             super().__init__(message, session_id)
-
 
     Location = collections.namedtuple(
         "Location", ["fru", "slot", "bay", "chassis", "node"]
@@ -479,8 +473,7 @@ class BootIntegrityValidator(object):
         if not certs:
             self._logger.error("0 certificates found in the command output")
             raise BootIntegrityValidator.MissingInfo(
-                "0 certificates found in in command output",
-                session_id=session_id
+                "0 certificates found in in command output", session_id=session_id
             )
 
         # Compare CA against known good CAs
@@ -504,7 +497,7 @@ class BootIntegrityValidator(object):
             )
             raise BootIntegrityValidator.ValidationException(
                 "Cisco Root CA in cmd_output doesn't match known good Cisco Root CA",
-                session_id=session_id
+                session_id=session_id,
             )
 
         # Compare Sub-CA against known good sub-CA
@@ -518,7 +511,7 @@ class BootIntegrityValidator(object):
             )
             raise BootIntegrityValidator.ValidationException(
                 "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA",
-                session_id=session_id
+                session_id=session_id,
             )
 
         # Device sudi cert
@@ -542,7 +535,7 @@ class BootIntegrityValidator(object):
             )
             raise BootIntegrityValidator.ValidationException(
                 "Device ID Certificate failed validation against Cisco CA Roots",
-                session_id=session_id
+                session_id=session_id,
             )
 
         self._logger.info(
@@ -558,7 +551,7 @@ class BootIntegrityValidator(object):
                 ca_cert_object=ca_cert_obj,
                 sub_ca_cert_object=cisco_sudi_ca_obj,
                 device_cert_object=device_sudi_obj,
-                session_id=session_id
+                session_id=session_id,
             )
             self._logger.info(f"SID:{session_id} - Signature of output valid.")
         else:
@@ -573,7 +566,11 @@ class BootIntegrityValidator(object):
 
     @staticmethod
     def _validate_show_platform_sudi_output(
-        cmd_output, ca_cert_object, sub_ca_cert_object, device_cert_object, session_id: int = -1
+        cmd_output,
+        ca_cert_object,
+        sub_ca_cert_object,
+        device_cert_object,
+        session_id: int = -1,
     ):
         """
         Validates the signature of the output from show platform sudi sign nonce xxx output
@@ -636,7 +633,7 @@ class BootIntegrityValidator(object):
         if not sigs:
             raise BootIntegrityValidator.MissingInfo(
                 "The signature in the 'show platform sudi certificate' command output is not present",
-                session_id=session_id
+                session_id=session_id,
             )
 
         sig_version = sigs.group(1)
@@ -678,7 +675,7 @@ class BootIntegrityValidator(object):
         if not verifier.verify(calculated_hash, sig_signature_bytes):
             raise BootIntegrityValidator.ValidationException(
                 "Signature on show platform sudi output failed validation",
-                session_id=session_id
+                session_id=session_id,
             )
 
     def _validate_show_platform_integrity_cmd_output(
@@ -736,8 +733,7 @@ class BootIntegrityValidator(object):
                 f"SID:{session_id} - Unable to extract the Platform type from the output"
             )
             raise BootIntegrityValidator.MissingInfo(
-                "Platform not found in cmd_output",
-                session_id=session_id
+                "Platform not found in cmd_output", session_id=session_id
             )
 
         def kgvs_for_dtype(dtype):
@@ -746,7 +742,7 @@ class BootIntegrityValidator(object):
             ):
                 raise BootIntegrityValidator.InvalidFormat(
                     "Structure of known_good_values provided in initializer is invalid",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             for kgv in self._kgv["bulkHash"]:
                 if kgv.get("dtype", "") == dtype:
@@ -780,7 +776,7 @@ class BootIntegrityValidator(object):
 
             raise BootIntegrityValidator.ValidationException(
                 f"version with biv_hash {cli_hash} not found in list of valid hashes",
-                session_id=session_id
+                session_id=session_id,
             )
 
         def validate_all_os_hashes(os_hashes: Tuple[str, str]):
@@ -797,7 +793,7 @@ class BootIntegrityValidator(object):
                 if not parent_kgv:
                     raise BootIntegrityValidator.ValidationException(
                         f"version with biv_hash {first_hash} not found in list of valid hashes",
-                        session_id=session_id
+                        session_id=session_id,
                     )
 
                 pkg_kgvs = {
@@ -815,12 +811,12 @@ class BootIntegrityValidator(object):
                 if given_pkg_filename not in pkg_kgvs:
                     raise BootIntegrityValidator.ValidationException(
                         f"package {given_pkg_filename} not found in list of valid hashes",
-                        session_id=session_id
+                        session_id=session_id,
                     )
                 if pkg_kgvs[given_pkg_filename] != given_pkg_hash:
                     raise BootIntegrityValidator.ValidationException(
                         f"version {given_pkg_filename} with biv_hash {given_pkg_hash} doesn't match Known good value of {pkg_kgvs[given_pkg_filename]}",
-                        session_id=session_id
+                        session_id=session_id,
                     )
 
         # Some of the biv_hashes are truncated
@@ -835,7 +831,7 @@ class BootIntegrityValidator(object):
                     self._validate_show_platform_integrity_cmd_output_signature(
                         cmd_output=cmd_output,
                         device_cert_object=device_cert_object,
-                        session_id=session_id
+                        session_id=session_id,
                     )
                 except BootIntegrityValidator.ValidationException as e:
                     self._logger.error(
@@ -850,7 +846,7 @@ class BootIntegrityValidator(object):
                 )
                 raise BootIntegrityValidator.MissingInfo(
                     "Signature can't be validated because the SUDI certificates haven't been provided",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
         kgv_mismatches = []
@@ -870,17 +866,15 @@ class BootIntegrityValidator(object):
         if boot_0_hash_re is None or boot_0_version_re is None:
             raise BootIntegrityValidator.MissingInfo(
                 "'Boot 0 Version' or 'Boot 0 Hash' not found in cmd_output",
-                session_id=session_id
+                session_id=session_id,
             )
         if not boot_0_version_re.group(1):
             raise BootIntegrityValidator.MissingInfo(
-                "Boot 0 Version not present in cmd_output",
-                session_id=session_id
+                "Boot 0 Version not present in cmd_output", session_id=session_id
             )
         if not boot_0_hash_re.group(1):
             raise BootIntegrityValidator.MissingInfo(
-                "Boot 0 Hash not present in cmd_output",
-                session_id=session_id
+                "Boot 0 Hash not present in cmd_output", session_id=session_id
             )
         if len(boot_0_hash_re.group(1)) not in acceptable_biv_hash_lengths:
             raise BootIntegrityValidator.MissingInfo(
@@ -889,7 +883,7 @@ class BootIntegrityValidator(object):
                     length=len(boot_0_hash_re.group(1)),
                     sizes=acceptable_biv_hash_lengths,
                 ),
-                session_id=session_id
+                session_id=session_id,
             )
 
         # Validate boot0Versions
@@ -917,17 +911,15 @@ class BootIntegrityValidator(object):
         if boot_loader_hash_re is None or boot_loader_version_re is None:
             raise BootIntegrityValidator.MissingInfo(
                 "'Boot Loader Version' or 'Boot Loader Hash' not found in cmd_output",
-                session_id=session_id
+                session_id=session_id,
             )
         if not boot_loader_version_re.group(1):
             raise BootIntegrityValidator.MissingInfo(
-                "Boot Loader Version not present in cmd_output",
-                session_id=session_id
+                "Boot Loader Version not present in cmd_output", session_id=session_id
             )
         if not boot_loader_hash_re.group(1):
             raise BootIntegrityValidator.MissingInfo(
-                "Boot Loader Hash not present in cmd_output",
-                session_id=session_id
+                "Boot Loader Hash not present in cmd_output", session_id=session_id
             )
         if len(boot_loader_hash_re.group(1)) not in acceptable_biv_hash_lengths:
             raise BootIntegrityValidator.MissingInfo(
@@ -936,7 +928,7 @@ class BootIntegrityValidator(object):
                     length=len(boot_loader_hash_re.group(1)),
                     sizes=acceptable_biv_hash_lengths,
                 ),
-                session_id=session_id
+                session_id=session_id,
             )
 
         try:
@@ -956,8 +948,7 @@ class BootIntegrityValidator(object):
         )
         if not os_version_re or not os_version_re.group(1):
             raise BootIntegrityValidator.MissingInfo(
-                "'OS Version' not found in cmd_output",
-                session_id=session_id
+                "'OS Version' not found in cmd_output", session_id=session_id
             )
 
         try:
@@ -965,14 +956,14 @@ class BootIntegrityValidator(object):
         except ValueError:
             raise BootIntegrityValidator.MissingInfo(
                 "'OS Hash' or 'OS Hashes' not found in cmd_output",
-                session_id=session_id
+                session_id=session_id,
             )
 
         for filename, hash in os_hashes:
             if len(hash) not in acceptable_biv_hash_lengths:
                 raise BootIntegrityValidator.MissingInfo(
                     f"OS Hash '{filename}' '{hash}' is of len {len(hash)} should be one of {acceptable_biv_hash_lengths}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
         try:
@@ -996,7 +987,7 @@ class BootIntegrityValidator(object):
                 message="Validation failed due to the following checks:\n"
                 + "\n".join(map(str, kgv_mismatches)),
                 individual_errors=kgv_mismatches,
-                session_id=session_id
+                session_id=session_id,
             )
 
         self._logger.info(
@@ -1102,8 +1093,7 @@ class BootIntegrityValidator(object):
         )
         if sigs is None:
             raise BootIntegrityValidator.MissingInfo(
-                "Signature not present in cmd_output",
-                session_id=session_id
+                "Signature not present in cmd_output", session_id=session_id
             )
         sig_version = sigs.group(1)
         sig_signature = sigs.group(2)
@@ -1142,7 +1132,7 @@ class BootIntegrityValidator(object):
         if not verifier.verify(calculated_hash, sig_signature_bytes):
             raise BootIntegrityValidator.ValidationException(
                 "Signature on show platform integrity output failed validation",
-                session_id=session_id
+                session_id=session_id,
             )
 
         # Signature over the reported PCR0 and PRCR8 passed.  Now they need to be computed and compared against
@@ -1155,8 +1145,7 @@ class BootIntegrityValidator(object):
         boot_0_hash_re = re.search(pattern=r"Boot 0 Hash:\s+(\S+)", string=cmd_output)
         if not boot_0_hash_re:
             raise BootIntegrityValidator.InvalidFormat(
-                "Boot 0 Hash not found in cmd_output",
-                session_id=session_id
+                "Boot 0 Hash not found in cmd_output", session_id=session_id
             )
         boot_0_hash_bytes = base64.b16decode(boot_0_hash_re.group(1))
         b0_measurement_hash = SHA256.new(boot_0_hash_bytes).digest()
@@ -1168,8 +1157,7 @@ class BootIntegrityValidator(object):
         )
         if not boot_loader_hash_re:
             raise BootIntegrityValidator.InvalidFormat(
-                "Boot Loader Hash not found in cmd_output",
-                session_id=session_id
+                "Boot Loader Hash not found in cmd_output", session_id=session_id
             )
         boot_loader_hash_bytes = base64.b16decode(boot_loader_hash_re.group(1))
         bl_measurement_hash = SHA256.new(boot_loader_hash_bytes).digest()
@@ -1179,7 +1167,7 @@ class BootIntegrityValidator(object):
         if pcr0_computed_text != pcr0_received_text:
             raise BootIntegrityValidator.ValidationException(
                 "The received PCR0 was signed correctly but doesn't match the computed PRC0 using the given measurements.",
-                session_id=session_id
+                session_id=session_id,
             )
 
         # PCR8 Calculation
@@ -1193,7 +1181,7 @@ class BootIntegrityValidator(object):
         if pcr8_computed_text != pcr8_received_text:
             raise BootIntegrityValidator.ValidationException(
                 "The received PCR8 was signed correctly but doesn't match the computed PRC8 using the given measurements.",
-                session_id=session_id
+                session_id=session_id,
             )
 
     def validate_v2_cli(
@@ -1372,7 +1360,7 @@ class BootIntegrityValidator(object):
                 )
                 raise BootIntegrityValidator.ValidationException(
                     "Cisco Root CA in cmd_output doesn't match known good Cisco Root CA",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             # Compare Sub-CA against known good Sub-CA
@@ -1387,7 +1375,7 @@ class BootIntegrityValidator(object):
                 )
                 raise BootIntegrityValidator.ValidationException(
                     "Cisco SUDI Sub-CA in cmd_output doesn't match known good Cisco SUDI CA",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             # Device sudi cert
@@ -1413,7 +1401,7 @@ class BootIntegrityValidator(object):
                 )
                 raise BootIntegrityValidator.ValidationException(
                     "Device ID Certificate failed validation against Cisco CA Roots",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             # The SUDI certificate is valid, now we need to validate the signature over the three certs
@@ -1436,7 +1424,7 @@ class BootIntegrityValidator(object):
             if not verifier.verify(calculated_hash, signature_bytes):
                 raise BootIntegrityValidator.ValidationException(
                     "Signature on show system integrity all trust-chain failed validation",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             sudi_certs[loc] = device_sudi_obj
 
@@ -1446,12 +1434,10 @@ class BootIntegrityValidator(object):
         self,
         compliance: dict,
         sudi_certs: Mapping[Location, OpenSSL.crypto.X509],
-        session_id: int = -1
+        session_id: int = -1,
     ) -> dict:
 
-        self._logger.info(
-            f"SID:{session_id} - Starting BIV v2 validation - Compliance"
-        )
+        self._logger.info(f"SID:{session_id} - Starting BIV v2 validation - Compliance")
 
         compliance_info = {}
         for location in compliance[
@@ -1479,7 +1465,7 @@ class BootIntegrityValidator(object):
             except KeyError:
                 raise BootIntegrityValidator.MissingInfo(
                     f"Compliance information can't be validated because the trust-chain for the following location is missing {loc}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             device_pkey_bin = OpenSSL.crypto.dump_publickey(
                 type=OpenSSL.crypto.FILETYPE_ASN1, pkey=device_sudi_obj.get_pubkey()
@@ -1490,7 +1476,7 @@ class BootIntegrityValidator(object):
             if not verifier.verify(calculated_hash, signature_bytes):
                 raise BootIntegrityValidator.ValidationException(
                     "Signature on show system integrity all compliance failed validation",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             compliance_info[loc] = compliance["capability"]
 
@@ -1511,7 +1497,7 @@ class BootIntegrityValidator(object):
             ):
                 raise BootIntegrityValidator.InvalidFormat(
                     "Structure of known_good_values provided in initializer is invalid",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             for kgv in self._kgv["bulkHash"]:
                 if kgv.get("dtype", "") == dtype:
@@ -1545,7 +1531,7 @@ class BootIntegrityValidator(object):
 
             raise BootIntegrityValidator.ValidationException(
                 f"version with biv_hash {hash_value} not found in list of valid hashes",
-                session_id=session_id
+                session_id=session_id,
             )
 
         def validate_all_os_hashes(os_hashes: Collection[Tuple[str, str]]):
@@ -1562,7 +1548,7 @@ class BootIntegrityValidator(object):
                 if not parent_kgv:
                     raise BootIntegrityValidator.ValidationException(
                         f"version with biv_hash {first_hash} not found in list of valid hashes",
-                        session_id=session_id
+                        session_id=session_id,
                     )
 
                 pkg_kgvs = {
@@ -1580,12 +1566,12 @@ class BootIntegrityValidator(object):
                 if given_pkg_filename not in pkg_kgvs:
                     raise BootIntegrityValidator.ValidationException(
                         f"package {given_pkg_filename} not found in list of valid hashes",
-                        session_id=session_id
+                        session_id=session_id,
                     )
                 if pkg_kgvs[given_pkg_filename] != given_pkg_hash:
                     raise BootIntegrityValidator.ValidationException(
                         f"version {given_pkg_filename} with biv_hash {given_pkg_hash} doesn't match Known good value of {pkg_kgvs[given_pkg_filename]}",
-                        session_id=session_id
+                        session_id=session_id,
                     )
 
         for location in measurements[
@@ -1622,7 +1608,7 @@ class BootIntegrityValidator(object):
             except KeyError:
                 raise BootIntegrityValidator.MissingInfo(
                     f"Measurement information can't be validated because the trust-chain for the following location is missing {loc}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             device_pkey_bin = OpenSSL.crypto.dump_publickey(
                 type=OpenSSL.crypto.FILETYPE_ASN1, pkey=device_sudi_obj.get_pubkey()
@@ -1633,7 +1619,7 @@ class BootIntegrityValidator(object):
             if not verifier.verify(calculated_hash, signature_bytes):
                 raise BootIntegrityValidator.ValidationException(
                     f"Signature on show system integrity all compliance failed validation for {loc}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             # Signature Validation of PCR registers successful
@@ -1654,7 +1640,7 @@ class BootIntegrityValidator(object):
             if pcr0_computed_text != pcr0_hex:
                 raise BootIntegrityValidator.ValidationException(
                     f"The received PCR0 was signed correctly but doesn't match the computed PRC0 using the given measurements for {loc}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             # PCR0 Validation Successful
@@ -1668,7 +1654,7 @@ class BootIntegrityValidator(object):
             if pcr8_computed_text != pcr8_hex:
                 raise BootIntegrityValidator.ValidationException(
                     f"The received PCR8 was signed correctly but doesn't match the computed PRC8 using the given measurements for {loc}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
             # PCR8 Validation Successful
 
@@ -1689,7 +1675,7 @@ class BootIntegrityValidator(object):
             except KeyError:
                 raise BootIntegrityValidator.MissingInfo(
                     f"Measurement information can't be validated because the compliance info for the following location is missing {loc}",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             biv_len = None
@@ -1746,7 +1732,7 @@ class BootIntegrityValidator(object):
                     message="Validation (v2) failed with the following errors:\n"
                     + "\n".join(map(str, kgv_mismatches)),
                     individual_errors=kgv_mismatches,
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             # Location successfully validated

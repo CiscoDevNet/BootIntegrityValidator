@@ -151,6 +151,22 @@ class TestBootIntegrityValidator(object):
                 show_platform_sudi_certificate_cmd_output=show_sudi.read(),
             )
 
+    def test_validate_exception_contains_session_id(self):
+        show_plat = open(self.test_files / "isr4k_show_plat_int_sign_bad.txt", "r")
+        show_sudi = open(self.test_files / "isr4k_show_plat_sudi_sign_nonce.txt", "r")
+        kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
+        with pytest.raises(BootIntegrityValidator.ValidationException) as e:
+            bi.validate(
+                show_platform_integrity_cmd_output=show_plat.read(),
+                show_platform_sudi_certificate_cmd_output=show_sudi.read(),
+            )
+        raised_exception = e.value
+        assert (
+            isinstance(raised_exception.session_id, int)
+            and raised_exception.session_id >= 1
+        )
+
     def test_validate_show_platform_integrity_invalid_pcr0(self):
         show_plat = open(
             self.test_files / "isr4k_show_plat_int_sign_nonce_invalid_pcr0.txt",
@@ -350,17 +366,21 @@ class TestBootIntegrityValidator(object):
             show_system_integrity_measurement_json=measurement_json,
         )
         assert isinstance(session_id, int) and session_id >= 1
-    
+
     def test_validate_crlf_eol(self):
-        show_plat = io.open(self.test_files / "show_plat_int_crlf_eol.txt", 'rt', newline='')
-        show_sudi = io.open(self.test_files / "show_plat_sudi_crlf_eol.txt", 'rt', newline='')
+        show_plat = io.open(
+            self.test_files / "show_plat_int_crlf_eol.txt", "rt", newline=""
+        )
+        show_sudi = io.open(
+            self.test_files / "show_plat_sudi_crlf_eol.txt", "rt", newline=""
+        )
         kgv = gzip.open(self.test_files / "example_kgv.json.gzip", "rb")
         bi = BootIntegrityValidator(known_good_values=kgv.read())
         bi.validate(
             show_platform_integrity_cmd_output=show_plat.read(),
-            show_platform_sudi_certificate_cmd_output=show_sudi.read()
+            show_platform_sudi_certificate_cmd_output=show_sudi.read(),
         )
-    
+
     def test_validate_catch_all_kgv_mismatches(self):
         show_plat_cert = open(self.test_files / "isr4k_show_plat_sudi_cert.txt", "r")
         show_plat_int = open(
@@ -370,9 +390,7 @@ class TestBootIntegrityValidator(object):
             self.test_files / "example_kgv.json.gzip",
             "rb",
         )
-        bi = BootIntegrityValidator(
-            known_good_values=kgv.read()
-        )
+        bi = BootIntegrityValidator(known_good_values=kgv.read())
 
         try:
             bi.validate(
@@ -385,11 +403,13 @@ class TestBootIntegrityValidator(object):
             assert len(e.individual_errors) == 2
 
             os_kgv_mismatch_log_re = re.search(
-                pattern=r"Error: version [\S]* with biv_hash [A-F\d]* doesn't match Known good value of [A-F\d]*", string=err_stacktrace
+                pattern=r"Error: version [\S]* with biv_hash [A-F\d]* doesn't match Known good value of [A-F\d]*",
+                string=err_stacktrace,
             )
             assert os_kgv_mismatch_log_re is not None
-            
+
             boot0_kgv_mismatch_log_re = re.search(
-                pattern=r"Error: version with biv_hash [ABCDEF\d]* not found in list of valid hashes", string=err_stacktrace
+                pattern=r"Error: version with biv_hash [ABCDEF\d]* not found in list of valid hashes",
+                string=err_stacktrace,
             )
             assert boot0_kgv_mismatch_log_re is not None
