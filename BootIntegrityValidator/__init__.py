@@ -158,7 +158,7 @@ class BootIntegrityValidator(object):
             self._logger.error("KGV file invalid.  Failed to load the values")
             raise BootIntegrityValidator.InvalidFormat(
                 "The known_good_values appears to be invalid JSON"
-            )
+            ) from e
 
         self._logger.info("BootIntegrityValidator object successfully initiated")
 
@@ -177,12 +177,13 @@ class BootIntegrityValidator(object):
             # Load the O=Cisco Systems, CN=Cisco Root CA 2048 tree first
             crca2048_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/crca2048.pem"
+                    package_name, f"{package_cert_path}/crca2048.pem"
                 )
             )
+
             act2sudica_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/ACT2SUDICA.pem"
+                    package_name, f"{package_cert_path}/ACT2SUDICA.pem"
                 )
             )
 
@@ -204,12 +205,13 @@ class BootIntegrityValidator(object):
             # Load the Cisco Root 2099 tree
             crca2099_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/crca2099.pem"
+                    package_name, f"{package_cert_path}/crca2099.pem"
                 )
             )
+
             hasudi_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/hasudi.pem"
+                    package_name, f"{package_cert_path}/hasudi.pem"
                 )
             )
 
@@ -230,19 +232,22 @@ class BootIntegrityValidator(object):
             # Load the O=Cisco, CN=Cisco Root CA M2 tree
             crcam2_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/crcam2.pem"
+                    package_name, f"{package_cert_path}/crcam2.pem"
                 )
             )
+
             innerspace_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/innerspace.cer"
+                    package_name, f"{package_cert_path}/innerspace.cer"
                 )
             )
+
             kgv_obj = self._load_cert_from_stream(
                 pkg_resources.resource_stream(
-                    package_name, package_cert_path + "/Known_Good_Values_PROD.pem"
+                    package_name, f"{package_cert_path}/Known_Good_Values_PROD.pem"
                 )
             )
+
             self._trusted_store.add_cert(cert=crcam2_obj)
             self._logger.debug("Loaded the Cisco Root CA M2 tree")
             self._cert_obj["crcam2"] = crcam2_obj
@@ -269,7 +274,7 @@ class BootIntegrityValidator(object):
             self._logger.error("Validation/loading of the Cisco CA certs failed")
             raise BootIntegrityValidator.ValidationException(
                 "Validation of Cisco CA certs failed"
-            )
+            ) from e
 
         self._logger.info("Bootstrapping the trusted CA certs complete")
 
@@ -291,7 +296,8 @@ class BootIntegrityValidator(object):
             self._logger.error("Validation of custom signing cert failed")
             raise BootIntegrityValidator.ValidationException(
                 "Custom signing cert failed to validate against the Cisco CAs"
-            )
+            ) from e
+
         self._trusted_store.add_cert(cert=custom_cert_obj)
         self._cert_obj["custom"] = custom_cert_obj
         self._logger.info("Custom signing cert validation successful")
@@ -336,7 +342,7 @@ class BootIntegrityValidator(object):
             self._logger.error("KGV signature validation failed")
             raise BootIntegrityValidator.ValidationException(
                 "The known_good_values failed signature failed signature validation"
-            )
+            ) from e
 
         self._logger.info("KGV signature valid")
 
@@ -636,14 +642,13 @@ class BootIntegrityValidator(object):
                 session_id=session_id,
             )
 
-        sig_version = sigs.group(1)
-        sig_signature = sigs.group(2)
+        sig_version = sigs[1]
+        sig_signature = sigs[2]
 
-        nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
-        nonce = None
-        if nonce_re:
-            nonce = int(nonce_re.group(1))
-
+        if nonce_re := re.search(r"nonce\s+(\d+)", cmd_output):
+            nonce = int(nonce_re[1])
+        else:
+            nonce = None
         # Convert the signature from output in hex to bytes
         sig_signature_bytes = base64.b16decode(s=sig_signature)
 
@@ -784,11 +789,9 @@ class BootIntegrityValidator(object):
             first_filename, first_hash = os_hashes[0]
             if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
                 # This is a mono image.  We can reduce the set down to a small set of pkgs
-                parent_kgv = None
-                for kgv in kgvs:
-                    if kgv["filename"] == first_filename:
-                        parent_kgv = kgv
-                        break
+                parent_kgv = next(
+                    (kgv for kgv in kgvs if kgv["filename"] == first_filename), None
+                )
 
                 if not parent_kgv:
                     raise BootIntegrityValidator.ValidationException(
@@ -1017,7 +1020,7 @@ class BootIntegrityValidator(object):
             pattern=r"OS Hash:[^\S\r\n]*([^\r\n]*)", string=cmd_output
         )
         if single_os_hash_re:
-            return (("single_hash", single_os_hash_re.group(1)),)
+            return (("single_hash", single_os_hash_re[1]),)
 
         multi_os_hash_re = re.search(
             pattern=r"OS Hashes:\s*\n((?:.|\n)*)PCR0:", string=cmd_output
@@ -1034,7 +1037,7 @@ class BootIntegrityValidator(object):
             os_hashes_text_re = re.search(
                 pattern=r"OS Hashes:\s*\n((?:.|\n)*)PCR0:", string=cmd_output
             )
-            os_hashes_text = os_hashes_text_re.group(1).splitlines()
+            os_hashes_text = os_hashes_text_re[1].splitlines()
             for hash_line in os_hashes_text:
                 hash_re = re.search(
                     pattern=r"^(?P<filename>\S+)\:\s*(?P<hash>[0-9A-F]+)\s*$",
@@ -1095,21 +1098,20 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.MissingInfo(
                 "Signature not present in cmd_output", session_id=session_id
             )
-        sig_version = sigs.group(1)
-        sig_signature = sigs.group(2)
+        sig_version = sigs[1]
+        sig_signature = sigs[2]
 
-        nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
-        nonce = None
-        if nonce_re:
-            nonce = int(nonce_re.group(1))
-
+        if nonce_re := re.search(r"nonce\s+(\d+)", cmd_output):
+            nonce = int(nonce_re[1])
+        else:
+            nonce = None
         # Convert the signature from output in hex to bytes
         sig_signature_bytes = base64.b16decode(s=sig_signature)
 
         pcr0_re = re.search(r"PCR0:\s+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
-        pcr0_received_text = pcr0_re.group(1)
+        pcr0_received_text = pcr0_re[1]
         pcr8_re = re.search(r"PCR8:\s+?([0-9A-F]+)", cmd_output, flags=re.DOTALL)
-        pcr8_received_text = pcr8_re.group(1)
+        pcr8_received_text = pcr8_re[1]
 
         # data to be hashed
         header = (
@@ -1147,7 +1149,7 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.InvalidFormat(
                 "Boot 0 Hash not found in cmd_output", session_id=session_id
             )
-        boot_0_hash_bytes = base64.b16decode(boot_0_hash_re.group(1))
+        boot_0_hash_bytes = base64.b16decode(boot_0_hash_re[1])
         b0_measurement_hash = SHA256.new(boot_0_hash_bytes).digest()
         init = b"\x00" * 32
         pcr0_computed = SHA256.new(init + b0_measurement_hash).digest()
@@ -1159,7 +1161,7 @@ class BootIntegrityValidator(object):
             raise BootIntegrityValidator.InvalidFormat(
                 "Boot Loader Hash not found in cmd_output", session_id=session_id
             )
-        boot_loader_hash_bytes = base64.b16decode(boot_loader_hash_re.group(1))
+        boot_loader_hash_bytes = base64.b16decode(boot_loader_hash_re[1])
         bl_measurement_hash = SHA256.new(boot_loader_hash_bytes).digest()
         pcr0_computed = SHA256.new(pcr0_computed + bl_measurement_hash).digest()
         pcr0_computed_text = base64.b16encode(pcr0_computed).decode()
@@ -1462,11 +1464,12 @@ class BootIntegrityValidator(object):
 
             try:
                 device_sudi_obj = sudi_certs[loc]
-            except KeyError:
+            except KeyError as e:
                 raise BootIntegrityValidator.MissingInfo(
                     f"Compliance information can't be validated because the trust-chain for the following location is missing {loc}",
                     session_id=session_id,
-                )
+                ) from e
+
             device_pkey_bin = OpenSSL.crypto.dump_publickey(
                 type=OpenSSL.crypto.FILETYPE_ASN1, pkey=device_sudi_obj.get_pubkey()
             )
@@ -1539,11 +1542,9 @@ class BootIntegrityValidator(object):
             first_filename, first_hash = os_hashes[0]
             if re.search(r"^.*(?<!mono)-universalk9.*$", first_filename):
                 # This is a mono image.  We can reduce the set down to a small set of pkgs
-                parent_kgv = None
-                for kgv in kgvs:
-                    if kgv["filename"] == first_filename:
-                        parent_kgv = kgv
-                        break
+                parent_kgv = next(
+                    (kgv for kgv in kgvs if kgv["filename"] == first_filename), None
+                )
 
                 if not parent_kgv:
                     raise BootIntegrityValidator.ValidationException(
