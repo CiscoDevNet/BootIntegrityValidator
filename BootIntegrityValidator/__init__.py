@@ -645,7 +645,8 @@ class BootIntegrityValidator(object):
         sig_version = sigs[1]
         sig_signature = sigs[2]
 
-        if nonce_re := re.search(r"nonce\s+(\d+)", cmd_output):
+        nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
+        if nonce_re:
             nonce = int(nonce_re[1])
         else:
             nonce = None
@@ -1101,7 +1102,8 @@ class BootIntegrityValidator(object):
         sig_version = sigs[1]
         sig_signature = sigs[2]
 
-        if nonce_re := re.search(r"nonce\s+(\d+)", cmd_output):
+        nonce_re = re.search(r"nonce\s+(\d+)", cmd_output)
+        if nonce_re:
             nonce = int(nonce_re[1])
         else:
             nonce = None
