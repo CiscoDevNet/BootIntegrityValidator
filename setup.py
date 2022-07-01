@@ -1,7 +1,12 @@
 from setuptools import setup, find_packages
 
 
-requirements = ["pyOpenSSL ==20.0.1", "Pycrypto ==2.6.1", "cffi ==1.14.6", "setuptools"]
+requirements = [
+    "pyOpenSSL ==20.0.1",
+    "pycryptodome ==3.15.0",
+    "cffi ==1.14.6",
+    "setuptools",
+]
 
 # Load the package meta data per #3
 # https://packaging.python.org/single_source_version/#single-sourcing-the-version

@@ -1,4 +1,0 @@
-image: themattrix/tox
-
-tox:
-  script: "tox"
