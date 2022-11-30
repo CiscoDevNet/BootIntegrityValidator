@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 
 requirements = [
-    "pyOpenSSL ==20.0.1",
-    "pycryptodome ==3.15.0",
-    "cffi ==1.14.6",
+    "pyOpenSSL",
+    "pycryptodome",
+    "cffi",
     "setuptools",
 ]
 
